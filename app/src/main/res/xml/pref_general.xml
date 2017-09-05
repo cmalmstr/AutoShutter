@@ -31,4 +31,8 @@
         android:positiveButtonText="@null"
         android:title="@string/pref_freq_title"
         android:summary="@string/pref_freq_description" />
+    <Preference android:title="@string/pref_donate" >
+        <intent android:action="android.intent.action.VIEW"
+            android:data="http://cmalmstrom.com/donate.html" />
+    </Preference>
 </PreferenceScreen>

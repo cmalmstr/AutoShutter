@@ -65,4 +65,5 @@
         <item>60</item>
         <item>180</item>
     </string-array>
+    <string name="pref_donate">Donate</string>
 </resources>

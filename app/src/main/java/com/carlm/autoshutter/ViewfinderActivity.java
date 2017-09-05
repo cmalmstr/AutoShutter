@@ -93,12 +93,12 @@ public class ViewfinderActivity extends AppCompatActivity {
         }
         @Override
         public void onOpened(CameraDevice camera){
-            List<Surface> output =  Arrays.asList(viewHandler.getHolder().getSurface());
+         /*   List<Surface> output =  Arrays.asList(viewHandler.getHolder().getSurface());
             try {
-                camera.createCaptureSession(output, sessionHandler, null);
+             camera.createCaptureSession(output, sessionHandler, null);
             }
             catch (CameraAccessException e){}
-        }
+        */}
     };
     private CameraCaptureSession.StateCallback sessionHandler = new CameraCaptureSession.StateCallback() {
         @Override
@@ -108,9 +108,9 @@ public class ViewfinderActivity extends AppCompatActivity {
         public void onConfigureFailed(@NonNull CameraCaptureSession session) {
         }
     };
-    private SurfaceView viewHandler = new SurfaceView(this){
+    //private SurfaceView viewHandler = new SurfaceView(this){
 
-    };
+    //};
     public void openSettings (View view){
         Intent intent = new Intent(ViewfinderActivity.this, SettingsActivity.class);
         startActivity(intent);
