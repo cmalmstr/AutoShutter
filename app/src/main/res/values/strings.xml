@@ -1,6 +1,7 @@
 <resources>
     <string name="app_name">Auto Shutter</string>
     <string name="title_activity_viewfinder">Viewfinder</string>
+    <string name="settingsbutton">Go to Settings</string>
 
     <!-- Strings related to Settings -->
     <string name="pref_res_title">Photo resolution</string>
