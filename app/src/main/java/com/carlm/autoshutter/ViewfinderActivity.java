@@ -8,6 +8,7 @@ import android.graphics.ImageFormat;
 import android.graphics.SurfaceTexture;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
@@ -68,7 +69,7 @@ public class ViewfinderActivity extends AppCompatActivity {
     }
     @Override
     public void onRequestPermissionsResult(int requestCode,
-                                           String permissions[], int[] grantResults) {
+                                           @NonNull String permissions[], @NonNull int[] grantResults) {
         switch (requestCode) {
             case 1: {
                 if (grantResults.length > 0
@@ -110,8 +111,8 @@ public class ViewfinderActivity extends AppCompatActivity {
     }
     private void openCamera(){
         try { cameraman.openCamera(cameraID, cameraHandler, backgroundHandler);
-        } catch (SecurityException e) {
-        } catch (CameraAccessException e) {}
+        } catch (SecurityException | CameraAccessException e) {
+        }
     }
     private void initPreview() {
         SurfaceTexture texture = previewTexture.getSurfaceTexture();
@@ -123,7 +124,7 @@ public class ViewfinderActivity extends AppCompatActivity {
         } catch (CameraAccessException e) {
         }
     }
-    private TextureView.SurfaceTextureListener viewHandler = new TextureView.SurfaceTextureListener(){
+    private final TextureView.SurfaceTextureListener viewHandler = new TextureView.SurfaceTextureListener(){
         public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
             initCamera();
         }
@@ -134,36 +135,36 @@ public class ViewfinderActivity extends AppCompatActivity {
         }
         public void onSurfaceTextureUpdated(SurfaceTexture surface) {}
     };
-    private CameraDevice.StateCallback cameraHandler = new CameraDevice.StateCallback() {
-        public void onOpened(CameraDevice camera){
+    private final CameraDevice.StateCallback cameraHandler = new CameraDevice.StateCallback() {
+        public void onOpened(@NonNull CameraDevice camera){
             deviceCamera = camera;
             initPreview();
         }
-        public void onClosed(CameraDevice camera){
+        public void onClosed(@NonNull CameraDevice camera){
             deviceCamera.close();
             openCamera();
         }
-        public void onDisconnected(CameraDevice camera){
+        public void onDisconnected(@NonNull CameraDevice camera){
             deviceCamera.close();
             initCamera();
         }
-        public void onError(CameraDevice camera, int error){
+        public void onError(@NonNull CameraDevice camera, int error){
             deviceCamera.close();
             initCamera();
         }
     };
-    private CameraCaptureSession.StateCallback sessionHandler = new CameraCaptureSession.StateCallback() {
-        public void onConfigured(CameraCaptureSession session){
+    private final CameraCaptureSession.StateCallback sessionHandler = new CameraCaptureSession.StateCallback() {
+        public void onConfigured(@NonNull CameraCaptureSession session){
             cameraSession = session;
             try {
-                CaptureRequest.Builder previewRequest = deviceCamera.createCaptureRequest(deviceCamera.TEMPLATE_PREVIEW);
+                CaptureRequest.Builder previewRequest = deviceCamera.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
                 previewRequest.addTarget(previewSurface);
                 previewRequest.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO);
                 session.setRepeatingRequest(previewRequest.build(), null, backgroundHandler);
             }
             catch (CameraAccessException e){}
         }
-        public void onConfigureFailed(CameraCaptureSession session) {
+        public void onConfigureFailed(@NonNull CameraCaptureSession session) {
             initCamera();
         }
     };
