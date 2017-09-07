@@ -1,10 +1,6 @@
 package com.carlm.autoshutter;
 
-import android.annotation.TargetApi;
-import android.content.Context;
 import android.content.Intent;
-import android.content.res.Configuration;
-import android.os.Build;
 import android.os.Bundle;
 import android.preference.ListPreference;
 import android.preference.Preference;
@@ -21,34 +17,25 @@ public class SettingsActivity extends AppCompatPreferenceActivity {
                 .commit();
         setupActionBar();
     }
-    private static Preference.OnPreferenceChangeListener sBindPreferenceSummaryToValueListener = new Preference.OnPreferenceChangeListener() {
-        @Override
-        public boolean onPreferenceChange(Preference preference, Object value) {
-            if (preference instanceof ListPreference) {
-                ListPreference listPreference = (ListPreference) preference;
-                int index = listPreference.findIndexOfValue(value.toString());
-                if (index >= 0)
-                    preference.setSummary(listPreference.getEntries()[index]);
-            }
-            return true;
-     }
-    };
-    private static boolean isXLargeTablet(Context context) {
-        return (context.getResources().getConfiguration().screenLayout
-                & Configuration.SCREENLAYOUT_SIZE_MASK) >= Configuration.SCREENLAYOUT_SIZE_XLARGE;
-    }
+    private static Preference.OnPreferenceChangeListener sBindPreferenceSummaryToValueListener =
+            new Preference.OnPreferenceChangeListener() {
+                @Override
+                public boolean onPreferenceChange(Preference preference, Object value) {
+                    if (preference instanceof ListPreference) {
+                        ListPreference listPreference = (ListPreference) preference;
+                        int index = listPreference.findIndexOfValue(value.toString());
+                        if (index >= 0)
+                            preference.setSummary(listPreference.getEntries()[index]);
+                    }
+                    return true;
+                }
+            };
     private void setupActionBar() {
         ActionBar actionBar = getSupportActionBar();
-        if (actionBar != null) {
-            // Show the Up button in the action bar.
+        if (actionBar != null)
             actionBar.setDisplayHomeAsUpEnabled(true);
-        }
     }
-    @Override
-    public boolean onIsMultiPane() {
-        return isXLargeTablet(this);
-    }
-    /**
+    /*
      * This method stops fragment injection in malicious applications.
      * Make sure to deny any unknown fragments here.
      */
@@ -56,7 +43,6 @@ public class SettingsActivity extends AppCompatPreferenceActivity {
         return PreferenceFragment.class.getName().equals(fragmentName)
                 || GeneralPreferenceFragment.class.getName().equals(fragmentName);
     }
-    @TargetApi(Build.VERSION_CODES.HONEYCOMB)
     public static class GeneralPreferenceFragment extends PreferenceFragment {
         @Override
         public void onCreate(Bundle savedInstanceState) {
