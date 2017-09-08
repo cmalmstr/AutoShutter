@@ -39,7 +39,7 @@
     <string name="pref_timelapse_title">Timelapse mode</string>
     <string name="pref_timelapse_description">Keeps screen on to enable timelapse photography</string>
     <string name="pref_freq_title">Subsequent delays</string>
-    <string name="pref_freq_description">Set delay before subsequent photos are captured</string>
+    <string name="pref_freq_description">Set delay before subsequent photos are captured (for timelapse)</string>
     <string-array name="pref_freq_list_titles">
         <item>Same as initial</item>
         <item>0.1s</item>

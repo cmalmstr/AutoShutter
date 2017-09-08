@@ -8,7 +8,8 @@
         android:positiveButtonText="@null"
         android:title="@string/pref_res_title"
         android:summary="@string/pref_res_description" />
-    <ListPreference
+
+<ListPreference
         android:defaultValue="5"
         android:entries="@array/pref_init_list_titles"
         android:entryValues="@array/pref_init_list_values"

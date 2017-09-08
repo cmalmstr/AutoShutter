@@ -22,9 +22,9 @@ import java.util.Arrays;
 import java.util.List;
 
 public class ViewfinderActivity extends AppCompatActivity {
-    protected CameraManager cameraman;
-    protected CameraDevice deviceCamera;
-    protected CameraCaptureSession cameraSession;
+    private CameraManager cameraman;
+    private CameraDevice deviceCamera;
+    private CameraCaptureSession cameraSession;
     private TextureView previewTexture;
     private Surface previewSurface;
     private String cameraID;
@@ -53,7 +53,7 @@ public class ViewfinderActivity extends AppCompatActivity {
         startBackgroundThread();
         findSurface();
     }
-    public void openSettings (View view){
+    protected void openSettings (View view){
         Intent intent = new Intent(ViewfinderActivity.this, SettingsActivity.class);
         startActivity(intent);
     }
@@ -97,11 +97,11 @@ public class ViewfinderActivity extends AppCompatActivity {
     private void findCamera(int cameraFacing) {
         CameraCharacteristics chars;
         Integer facevalue;
-        try{ for (int i = 0; i < cameras.length; i++) {
-                chars = cameraman.getCameraCharacteristics(cameras[i]);
+        try{ for (String camID : cameras) {
+                chars = cameraman.getCameraCharacteristics(camID);
                 facevalue = chars.get(CameraCharacteristics.LENS_FACING);
                 if (facevalue != null && facevalue == cameraFacing) {
-                    cameraID = cameras[i];
+                    cameraID = camID;
                     JPGsizes = chars.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP).getOutputSizes(ImageFormat.JPEG);
                     break;
                 }
@@ -168,12 +168,12 @@ public class ViewfinderActivity extends AppCompatActivity {
             initCamera();
         }
     };
-    protected void startBackgroundThread() {
+    private void startBackgroundThread() {
         backgroundThread = new HandlerThread("Camera Background");
         backgroundThread.start();
         backgroundHandler = new Handler(backgroundThread.getLooper());
     }
-    protected void stopBackgroundThread() {
+    private void stopBackgroundThread() {
         backgroundThread.quitSafely();
         try {
             backgroundThread.join();
