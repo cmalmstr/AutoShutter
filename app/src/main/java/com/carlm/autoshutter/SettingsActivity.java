@@ -1,14 +1,17 @@
 package com.carlm.autoshutter;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.preference.ListPreference;
 import android.preference.Preference;
+import android.preference.PreferenceManager;
 import android.support.v7.app.ActionBar;
 import android.preference.PreferenceFragment;
+import android.support.v7.app.AppCompatActivity;
 import android.view.MenuItem;
 
-public class SettingsActivity extends AppCompatPreferenceActivity {
+public class SettingsActivity extends AppCompatActivity implements SharedPreferences.OnSharedPreferenceChangeListener {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -16,11 +19,28 @@ public class SettingsActivity extends AppCompatPreferenceActivity {
                 .replace(android.R.id.content, new GeneralPreferenceFragment())
                 .commit();
         setupActionBar();
+       /* SharedPreferences.OnSharedPreferenceChangeListener listener =
+                new SharedPreferences.OnSharedPreferenceChangeListener() {
+                    public void onSharedPreferenceChanged(SharedPreferences prefs, String key) {}
+        };
+        sharedPref.registerOnSharedPreferenceChangeListener(listener);*/
     }
-    private static Preference.OnPreferenceChangeListener sBindPreferenceSummaryToValueListener =
+    public void onSharedPreferenceChanged(SharedPreferences sharedPreferences,
+                                          String key){
+
+        /*if (sharedPreferences instanceof ListPreference) {
+            ListPreference listPreference = (ListPreference) preference;
+            int index = listPreference.findIndexOfValue(value.toString());
+            if (index >= 0)
+                preference.setSummary(listPreference.getEntries()[index]);
+        }*/
+
+    }
+    private static Preference.OnPreferenceChangeListener BindPreferenceSummaryToValueListener =
             new Preference.OnPreferenceChangeListener() {
                 @Override
                 public boolean onPreferenceChange(Preference preference, Object value) {
+
                     if (preference instanceof ListPreference) {
                         ListPreference listPreference = (ListPreference) preference;
                         int index = listPreference.findIndexOfValue(value.toString());
@@ -59,5 +79,9 @@ public class SettingsActivity extends AppCompatPreferenceActivity {
             }
             return super.onOptionsItemSelected(item);
         }
+    }
+    @Override
+    public void onBackPressed(){
+        startActivity(new Intent(this, ViewfinderActivity.class));
     }
 }

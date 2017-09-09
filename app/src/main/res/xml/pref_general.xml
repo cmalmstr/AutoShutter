@@ -24,6 +24,7 @@
         android:summary="@string/pref_timelapse_description"
         android:title="@string/pref_timelapse_title" />
     <ListPreference
+        android:dependency="timelapse"
         android:defaultValue="initial"
         android:entries="@array/pref_freq_list_titles"
         android:entryValues="@array/pref_freq_list_values"
