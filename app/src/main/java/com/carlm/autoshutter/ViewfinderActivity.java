@@ -31,17 +31,18 @@ public class ViewfinderActivity extends AppCompatActivity {
     private CameraManager cameraman;
     private CameraDevice deviceCamera;
     private CameraCaptureSession cameraSession;
-    private TextureView previewTexture;
-    private Surface previewSurface;
     private String cameraID;
     private String[] cameras;
-    private Size previewSize;
     private int cameraFacing;
+    private TextureView previewTexture;
+    private Surface previewSurface;
+    private Size previewSize;
+    private TextView feedback;
+    private CountDownTimer countdown;
     private Handler backgroundHandler;
     private HandlerThread backgroundThread;
     private SharedPreferences sharedPref;
-    private CountDownTimer countdown;
-    private TextView feedback;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -65,27 +66,27 @@ public class ViewfinderActivity extends AppCompatActivity {
     }
     @Override
     protected void onPause(){
-        super.onPause();
         try { cameraSession.stopRepeating();
         } catch (CameraAccessException e) {}
         cameraSession.close();
+        super.onPause();
     }
     @Override
     protected void onStop(){
-        super.onStop();
         if (cameraSession != null)
             onPause();
         deviceCamera.close();
         previewSurface.release();
         stopBackgroundThread();
+        super.onStop();
     }
     private void autoShutter(){
-        System.out.println(sharedPref.getString("resolution",""));
-        final int delay = 5000;
+        System.out.println();
+        int delay = Integer.parseInt(sharedPref.getString("delay",null));
         final int interval = 100;
         if (countdown != null)
             countdown.cancel();
-        countdown = new CountDownTimer(delay, interval) {
+        countdown = new CountDownTimer(delay*1000, interval) {
             @Override
             public void onTick(long millisUntilFinished) {
                 feedback.setText((millisUntilFinished+1000-1)/1000 + "s");
@@ -115,7 +116,7 @@ public class ViewfinderActivity extends AppCompatActivity {
         if (countdown != null) {
             countdown.cancel();
             countdown = null;
-            feedback.setText("Paused");
+            feedback.setText("@string/pausetext");
         }
         else
             autoShutter();

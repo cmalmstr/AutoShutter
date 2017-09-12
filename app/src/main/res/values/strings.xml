@@ -3,47 +3,42 @@
     <string name="settingsbutton">Go to Settings</string>
     <string name="swapbutton">Switch between front and back camera</string>
     <string name="pausebutton">Pause auto capture</string>
+    <string name="pausetext">Paused</string>
 
     <!-- Strings related to Settings -->
     <string name="pref_res_title">Photo resolution</string>
-    <string name="pref_res_description">Set the resolution of captured photos
-    </string>
-    <string-array name="pref_res_list_titles">
+    <string name="pref_res_def">fhd</string>
+    <string-array name="pref_res_titles">
+        <item>1MP/720p</item>
         <item>2MP/1080p</item>
-        <item>5MP</item>
-        <item>8MP</item>
-        <item>Max</item>
+        <item>Maximum</item>
     </string-array>
-    <string-array name="pref_res_list_values">
-        <item>1920</item>
-        <item>2560</item>
-        <item>3264</item>
+    <string-array name="pref_res_values">
+        <item>hd</item>
+        <item>fhd</item>
         <item>max</item>
     </string-array>
     <string name="pref_init_title">Initial delay</string>
-    <string name="pref_init_description">Set delay before first photo is captured</string>
-    <string-array name="pref_init_list_titles">
-        <item>1s</item>
+    <string name="pref_init_def">5</string>
+    <string-array name="pref_init_titles">
         <item>2s</item>
         <item>5s</item>
         <item>10s</item>
+        <item>15s</item>
         <item>30s</item>
-        <item>60s</item>
     </string-array>
-    <string-array name="pref_init_list_values">
-        <item>1</item>
+    <string-array name="pref_init_values">
         <item>2</item>
         <item>5</item>
         <item>10</item>
+        <item>15</item>
         <item>30</item>
-        <item>60</item>
     </string-array>
     <string name="pref_timelapse_title">Timelapse mode</string>
-    <string name="pref_timelapse_description">Keeps screen on to enable timelapse photography</string>
-    <string name="pref_freq_title">Subsequent delays</string>
-    <string name="pref_freq_description">Set delay before subsequent photos are captured</string>
-    <string-array name="pref_freq_list_titles">
-        <item>Same as initial</item>
+    <string name="pref_timelapse_description">Keeps screen and enables timelapse photography</string>
+    <string name="pref_freq_title">Timelapse frame interval</string>
+    <string name="pref_freq_def">1</string>
+    <string-array name="pref_freq_titles">
         <item>0.1s</item>
         <item>0.2s</item>
         <item>0.5s</item>
@@ -52,10 +47,8 @@
         <item>10s</item>
         <item>30s</item>
         <item>60s</item>
-        <item>180s</item>
     </string-array>
-    <string-array name="pref_freq_list_values">
-        <item>initial</item>
+    <string-array name="pref_freq_values">
         <item>0.1</item>
         <item>0.2</item>
         <item>0.5</item>
@@ -64,7 +57,6 @@
         <item>10</item>
         <item>30</item>
         <item>60</item>
-        <item>180</item>
     </string-array>
     <string name="pref_donate">Donate</string>
 </resources>

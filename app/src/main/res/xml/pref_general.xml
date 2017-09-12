@@ -1,23 +1,21 @@
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
     <ListPreference
-        android:defaultValue="1920"
-        android:entries="@array/pref_res_list_titles"
-        android:entryValues="@array/pref_res_list_values"
+        android:defaultValue="@string/pref_res_def"
+        android:entries="@array/pref_res_titles"
+        android:entryValues="@array/pref_res_values"
         android:key="resolution"
         android:negativeButtonText="@null"
         android:positiveButtonText="@null"
-        android:title="@string/pref_res_title"
-        android:summary="@string/pref_res_description" />
+        android:title="@string/pref_res_title" />
 
-<ListPreference
-        android:defaultValue="5"
-        android:entries="@array/pref_init_list_titles"
-        android:entryValues="@array/pref_init_list_values"
+    <ListPreference
+        android:defaultValue="@string/pref_init_def"
+        android:entries="@array/pref_init_titles"
+        android:entryValues="@array/pref_init_values"
         android:key="delay"
         android:negativeButtonText="@null"
         android:positiveButtonText="@null"
-        android:title="@string/pref_init_title"
-        android:summary="@string/pref_init_description" />
+        android:title="@string/pref_init_title" />
     <SwitchPreference
         android:defaultValue="false"
         android:key="timelapse"
@@ -25,14 +23,13 @@
         android:title="@string/pref_timelapse_title" />
     <ListPreference
         android:dependency="timelapse"
-        android:defaultValue="initial"
-        android:entries="@array/pref_freq_list_titles"
-        android:entryValues="@array/pref_freq_list_values"
+        android:defaultValue="@string/pref_freq_def"
+        android:entries="@array/pref_freq_titles"
+        android:entryValues="@array/pref_freq_values"
         android:key="frequency"
         android:negativeButtonText="@null"
         android:positiveButtonText="@null"
-        android:title="@string/pref_freq_title"
-        android:summary="@string/pref_freq_description" />
+        android:title="@string/pref_freq_title" />
     <Preference android:title="@string/pref_donate" >
         <intent android:action="android.intent.action.VIEW"
             android:data="http://cmalmstrom.com/donate.html" />

@@ -7,7 +7,6 @@ import android.preference.ListPreference;
 import android.preference.Preference;
 import android.support.v7.app.ActionBar;
 import android.preference.PreferenceFragment;
-import android.text.TextUtils;
 import android.view.MenuItem;
 
 public class SettingsActivity extends AppCompatPreferenceActivity {
@@ -15,62 +14,48 @@ public class SettingsActivity extends AppCompatPreferenceActivity {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         getFragmentManager().beginTransaction()
-                .replace(android.R.id.content, new GeneralPreferenceFragment())
+                .replace(android.R.id.content, new PrefFragment())
                 .commit();
         setupActionBar();
-
-       /* SharedPreferences.OnSharedPreferenceChangeListener listener =
-                new SharedPreferences.OnSharedPreferenceChangeListener() {
-                    public void onSharedPreferenceChanged(SharedPreferences prefs, String key) {}
-        };
-        sharedPref.registerOnSharedPreferenceChangeListener(listener);*/
     }
-    @Override
-    public void onBackPressed(){
-        startActivity(new Intent(this, ViewfinderActivity.class));
-    }
-
-    private static Preference.OnPreferenceChangeListener BindPreferenceSummaryToValueListener =
-            new Preference.OnPreferenceChangeListener() {
-                @Override
-                public boolean onPreferenceChange(Preference preference, Object value) {
-
-                    if (preference instanceof ListPreference) {
-                        ListPreference listPreference = (ListPreference) preference;
-                        int index = listPreference.findIndexOfValue(value.toString());
-                        if (index >= 0)
-                            preference.setSummary(listPreference.getEntries()[index]);
-                    }
-                    return true;
-                }
-            };
     private void setupActionBar() {
         ActionBar actionBar = getSupportActionBar();
         if (actionBar != null)
             actionBar.setDisplayHomeAsUpEnabled(true);
     }
-    public static class GeneralPreferenceFragment extends PreferenceFragment implements SharedPreferences.OnSharedPreferenceChangeListener {
+    @Override
+    public void onBackPressed(){
+        startActivity(new Intent(this, ViewfinderActivity.class));
+    }
+    public static class PrefFragment extends PreferenceFragment implements SharedPreferences.OnSharedPreferenceChangeListener {
         @Override
         public void onCreate(Bundle savedInstanceState) {
             super.onCreate(savedInstanceState);
             addPreferencesFromResource(R.xml.pref_general);
-            SharedPreferences sp = getPreferenceScreen().getSharedPreferences();
             setHasOptionsMenu(true);
+            String [] prefKeys = {"resolution","delay","frequency"};
+            for (String key : prefKeys){
+                ListPreference listPref = (ListPreference) findPreference(key);
+                listPref.setSummary(listPref.getEntry());
+            }
+        }
+        @Override
+        public void onResume(){
+            super.onResume();
+            getPreferenceManager().getSharedPreferences().registerOnSharedPreferenceChangeListener(this);
+        }
+        @Override
+        public void onPause(){
+            getPreferenceManager().getSharedPreferences().unregisterOnSharedPreferenceChangeListener(this);
+            super.onPause();
         }
         public void onSharedPreferenceChanged(SharedPreferences sharedPreferences,
                                               String key){
             Preference pref = findPreference(key);
             if (pref instanceof ListPreference) {
-                // Update display title
-                // Write the description for the newly selected preference
-                // in the summary field.
                 ListPreference listPref = (ListPreference) pref;
-                CharSequence listDesc = listPref.getEntry();
-                if (!TextUtils.isEmpty(listDesc)) {
-                    pref.setSummary(listDesc);
-                }
+                listPref.setSummary(listPref.getEntry());
             }
-
         }
         @Override
         public boolean onOptionsItemSelected(MenuItem item) {
