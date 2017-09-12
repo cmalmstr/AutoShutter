@@ -9,6 +9,7 @@ import android.content.res.Resources;
 import android.graphics.ImageFormat;
 import android.graphics.SurfaceTexture;
 import android.os.CountDownTimer;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.preference.PreferenceManager;
@@ -16,13 +17,12 @@ import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
-import android.os.Bundle;
-import android.util.Size;
 import android.view.Surface;
 import android.view.TextureView;
 import android.view.View;
-import android.hardware.camera2.*;
 import android.widget.TextView;
+import android.hardware.camera2.*;
+import android.util.Size;
 
 import java.util.Arrays;
 import java.util.List;
@@ -42,8 +42,6 @@ public class ViewfinderActivity extends AppCompatActivity {
     private Handler backgroundHandler;
     private HandlerThread backgroundThread;
     private SharedPreferences sharedPref;
-
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -116,7 +114,7 @@ public class ViewfinderActivity extends AppCompatActivity {
         if (countdown != null) {
             countdown.cancel();
             countdown = null;
-            feedback.setText("@string/pausetext");
+            feedback.setText(R.string.pausetext);
         }
         else
             autoShutter();
@@ -124,6 +122,9 @@ public class ViewfinderActivity extends AppCompatActivity {
     protected void openSettings (View view){
         Intent intent = new Intent(ViewfinderActivity.this, SettingsActivity.class);
         startActivity(intent);
+    }
+    protected void setPermissions(View view){
+
     }
     private void findPermissions (){
         if (ContextCompat.checkSelfPermission(this,
@@ -141,16 +142,14 @@ public class ViewfinderActivity extends AppCompatActivity {
         switch (requestCode) {
             case 1: {
                 if (grantResults.length > 0
-                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                        && grantResults[0] == PackageManager.PERMISSION_GRANTED)
                     findSurface();
-                } else {
+                else
                     noPermissions();
-                }
-            }
-        }
+            }}
     }
     private void noPermissions (){
-        //Ask again, nicely
+        setContentView(R.layout.activity_permissions);
     }
     private void findSurface(){
         if (previewTexture.isAvailable()) {
@@ -270,5 +269,4 @@ public class ViewfinderActivity extends AppCompatActivity {
             e.printStackTrace();
         }
     }
-
 }
