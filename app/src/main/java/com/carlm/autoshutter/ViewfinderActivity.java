@@ -22,7 +22,6 @@ import android.view.Surface;
 import android.view.TextureView;
 import android.view.View;
 import android.hardware.camera2.*;
-import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import java.util.Arrays;
@@ -41,6 +40,8 @@ public class ViewfinderActivity extends AppCompatActivity {
     private Handler backgroundHandler;
     private HandlerThread backgroundThread;
     private SharedPreferences sharedPref;
+    private CountDownTimer countdown;
+    private TextView feedback;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -48,7 +49,17 @@ public class ViewfinderActivity extends AppCompatActivity {
         PreferenceManager.setDefaultValues(this, R.xml.pref_general, false);
         sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
         setContentView(R.layout.activity_viewfinder);
+        previewTexture = (TextureView) findViewById(R.id.viewfinderView);
+        feedback = (TextView)findViewById(R.id.shutterText);
+    }
+    @Override
+    protected void onStart(){
+        super.onStart();
         startBackgroundThread();
+    }
+    @Override
+    protected void onResume(){
+        super.onResume();
         findPermissions();
         autoShutter();
     }
@@ -57,35 +68,36 @@ public class ViewfinderActivity extends AppCompatActivity {
         super.onPause();
         try { cameraSession.stopRepeating();
         } catch (CameraAccessException e) {}
-        stopBackgroundThread();
+        cameraSession.close();
     }
     @Override
-    protected void onResume(){
-        super.onResume();
-        startBackgroundThread();
+    protected void onStop(){
+        super.onStop();
+        if (cameraSession != null)
+            onPause();
+        deviceCamera.close();
+        previewSurface.release();
+        stopBackgroundThread();
     }
     private void autoShutter(){
         System.out.println(sharedPref.getString("resolution",""));
         final int delay = 5000;
-        final int interval = 500;
-        final TextView feedback = (TextView)findViewById(R.id.shutterText);
-        final String s = "s";
-        CountDownTimer countdown = new CountDownTimer(delay, interval) {
+        final int interval = 100;
+        if (countdown != null)
+            countdown.cancel();
+        countdown = new CountDownTimer(delay, interval) {
             @Override
             public void onTick(long millisUntilFinished) {
-                feedback.setText((1+millisUntilFinished/1000) + s);
+                feedback.setText((millisUntilFinished+1000-1)/1000 + "s");
             }
             @Override
             public void onFinish() {
+                feedback.setText("0s");
                 capture();
             }
         }.start();
     }
     private void capture (){
-    }
-    protected void openSettings (View view){
-        Intent intent = new Intent(ViewfinderActivity.this, SettingsActivity.class);
-        startActivity(intent);
     }
     protected void swapCameras (View view){
         if (cameraFacing == CameraCharacteristics.LENS_FACING_BACK)
@@ -96,8 +108,21 @@ public class ViewfinderActivity extends AppCompatActivity {
         } catch (CameraAccessException e) {}
         cameraSession.close();
         deviceCamera.close();
-        previewSurface.release();
         findCamera();
+        autoShutter();
+    }
+    protected void pauseCount (View view){
+        if (countdown != null) {
+            countdown.cancel();
+            countdown = null;
+            feedback.setText("Paused");
+        }
+        else
+            autoShutter();
+    }
+    protected void openSettings (View view){
+        Intent intent = new Intent(ViewfinderActivity.this, SettingsActivity.class);
+        startActivity(intent);
     }
     private void findPermissions (){
         if (ContextCompat.checkSelfPermission(this,
@@ -127,9 +152,23 @@ public class ViewfinderActivity extends AppCompatActivity {
         //Ask again, nicely
     }
     private void findSurface(){
-        previewTexture = (TextureView) findViewById(R.id.viewfinderView);
-        previewTexture.setSurfaceTextureListener(viewHandler);
+        if (previewTexture.isAvailable()) {
+            initCamera();
+        } else {
+            previewTexture.setSurfaceTextureListener(viewHandler);
+        }
     }
+    private TextureView.SurfaceTextureListener viewHandler = new TextureView.SurfaceTextureListener(){
+        public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
+            initCamera();
+        }
+        public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) {}
+        public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {
+            previewTexture = null;
+            return false;
+        }
+        public void onSurfaceTextureUpdated(SurfaceTexture surface) {}
+    };
     private void initCamera(){
         cameraman = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
         try{ cameras = cameraman.getCameraIdList();
@@ -141,32 +180,17 @@ public class ViewfinderActivity extends AppCompatActivity {
         CameraCharacteristics chars;
         Integer facevalue;
         try{ for (String camID : cameras) {
-                chars = cameraman.getCameraCharacteristics(camID);
-                facevalue = chars.get(CameraCharacteristics.LENS_FACING);
-                if (facevalue != null && facevalue == cameraFacing) {
-                    cameraID = camID;
-                    Size[] JPGsizes = chars.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP).getOutputSizes(ImageFormat.JPEG);
-                    setSizes(JPGsizes);
-                    break;
-                }
+            chars = cameraman.getCameraCharacteristics(camID);
+            facevalue = chars.get(CameraCharacteristics.LENS_FACING);
+            if (facevalue != null && facevalue == cameraFacing) {
+                cameraID = camID;
+                Size[] JPGsizes = chars.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP).getOutputSizes(ImageFormat.JPEG);
+                setSizes(JPGsizes);
+                break;
             }
+        }
         } catch (CameraAccessException e) {}
         openCamera();
-    }
-    private void openCamera(){
-        try { cameraman.openCamera(cameraID, cameraHandler, backgroundHandler);
-        } catch (SecurityException | CameraAccessException e) {
-        }
-    }
-    private void initPreview() {
-        SurfaceTexture texture = previewTexture.getSurfaceTexture();
-        texture.setDefaultBufferSize(previewSize.getWidth(), previewSize.getHeight());
-        previewSurface = new Surface(texture);
-        List<Surface> outputList = Arrays.asList(previewSurface);
-        try {
-            deviceCamera.createCaptureSession(outputList, sessionHandler, null);
-        } catch (CameraAccessException e) {
-        }
     }
     private void setSizes (Size[] JPGsizes){
         int screenWidth = Resources.getSystem().getDisplayMetrics().widthPixels;
@@ -181,17 +205,12 @@ public class ViewfinderActivity extends AppCompatActivity {
                 previewSize = new Size(thisWidth, thisHeight);
         }
     }
-    private final TextureView.SurfaceTextureListener viewHandler = new TextureView.SurfaceTextureListener(){
-        public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
-            initCamera();
+    private void openCamera(){
+        try { cameraman.openCamera(cameraID, cameraHandler, backgroundHandler);
+        } catch (SecurityException | CameraAccessException e) {
         }
-        public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) {}
-        public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {
-            return false;
-        }
-        public void onSurfaceTextureUpdated(SurfaceTexture surface) {}
-    };
-    private final CameraDevice.StateCallback cameraHandler = new CameraDevice.StateCallback() {
+    }
+    private CameraDevice.StateCallback cameraHandler = new CameraDevice.StateCallback() {
         public void onOpened(@NonNull CameraDevice camera){
             deviceCamera = camera;
             initPreview();
@@ -209,7 +228,17 @@ public class ViewfinderActivity extends AppCompatActivity {
             deviceCamera = null;
         }
     };
-    private final CameraCaptureSession.StateCallback sessionHandler = new CameraCaptureSession.StateCallback() {
+    private void initPreview() {
+        SurfaceTexture texture = previewTexture.getSurfaceTexture();
+        texture.setDefaultBufferSize(previewSize.getWidth(), previewSize.getHeight());
+        previewSurface = new Surface(texture);
+        List<Surface> outputList = Arrays.asList(previewSurface);
+        try {
+            deviceCamera.createCaptureSession(outputList, sessionHandler, null);
+        } catch (CameraAccessException e) {
+        }
+    }
+    private CameraCaptureSession.StateCallback sessionHandler = new CameraCaptureSession.StateCallback() {
         public void onConfigured(@NonNull CameraCaptureSession session){
             cameraSession = session;
             try {
@@ -223,6 +252,7 @@ public class ViewfinderActivity extends AppCompatActivity {
         public void onConfigureFailed(@NonNull CameraCaptureSession session) {
             initCamera();
         }
+        public void onClosed(@NonNull CameraCaptureSession session){cameraSession = null;}
     };
     private void startBackgroundThread() {
         backgroundThread = new HandlerThread("Camera Background");

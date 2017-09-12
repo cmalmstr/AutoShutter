@@ -5,13 +5,12 @@ import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.preference.ListPreference;
 import android.preference.Preference;
-import android.preference.PreferenceManager;
 import android.support.v7.app.ActionBar;
 import android.preference.PreferenceFragment;
-import android.support.v7.app.AppCompatActivity;
+import android.text.TextUtils;
 import android.view.MenuItem;
 
-public class SettingsActivity extends AppCompatActivity implements SharedPreferences.OnSharedPreferenceChangeListener {
+public class SettingsActivity extends AppCompatPreferenceActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -19,23 +18,18 @@ public class SettingsActivity extends AppCompatActivity implements SharedPrefere
                 .replace(android.R.id.content, new GeneralPreferenceFragment())
                 .commit();
         setupActionBar();
+
        /* SharedPreferences.OnSharedPreferenceChangeListener listener =
                 new SharedPreferences.OnSharedPreferenceChangeListener() {
                     public void onSharedPreferenceChanged(SharedPreferences prefs, String key) {}
         };
         sharedPref.registerOnSharedPreferenceChangeListener(listener);*/
     }
-    public void onSharedPreferenceChanged(SharedPreferences sharedPreferences,
-                                          String key){
-
-        /*if (sharedPreferences instanceof ListPreference) {
-            ListPreference listPreference = (ListPreference) preference;
-            int index = listPreference.findIndexOfValue(value.toString());
-            if (index >= 0)
-                preference.setSummary(listPreference.getEntries()[index]);
-        }*/
-
+    @Override
+    public void onBackPressed(){
+        startActivity(new Intent(this, ViewfinderActivity.class));
     }
+
     private static Preference.OnPreferenceChangeListener BindPreferenceSummaryToValueListener =
             new Preference.OnPreferenceChangeListener() {
                 @Override
@@ -55,20 +49,28 @@ public class SettingsActivity extends AppCompatActivity implements SharedPrefere
         if (actionBar != null)
             actionBar.setDisplayHomeAsUpEnabled(true);
     }
-    /*
-     * This method stops fragment injection in malicious applications.
-     * Make sure to deny any unknown fragments here.
-     */
-    protected boolean isValidFragment(String fragmentName) {
-        return PreferenceFragment.class.getName().equals(fragmentName)
-                || GeneralPreferenceFragment.class.getName().equals(fragmentName);
-    }
-    public static class GeneralPreferenceFragment extends PreferenceFragment {
+    public static class GeneralPreferenceFragment extends PreferenceFragment implements SharedPreferences.OnSharedPreferenceChangeListener {
         @Override
         public void onCreate(Bundle savedInstanceState) {
             super.onCreate(savedInstanceState);
             addPreferencesFromResource(R.xml.pref_general);
+            SharedPreferences sp = getPreferenceScreen().getSharedPreferences();
             setHasOptionsMenu(true);
+        }
+        public void onSharedPreferenceChanged(SharedPreferences sharedPreferences,
+                                              String key){
+            Preference pref = findPreference(key);
+            if (pref instanceof ListPreference) {
+                // Update display title
+                // Write the description for the newly selected preference
+                // in the summary field.
+                ListPreference listPref = (ListPreference) pref;
+                CharSequence listDesc = listPref.getEntry();
+                if (!TextUtils.isEmpty(listDesc)) {
+                    pref.setSummary(listDesc);
+                }
+            }
+
         }
         @Override
         public boolean onOptionsItemSelected(MenuItem item) {
@@ -79,9 +81,5 @@ public class SettingsActivity extends AppCompatActivity implements SharedPrefere
             }
             return super.onOptionsItemSelected(item);
         }
-    }
-    @Override
-    public void onBackPressed(){
-        startActivity(new Intent(this, ViewfinderActivity.class));
     }
 }
