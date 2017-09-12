@@ -34,6 +34,7 @@ public class ViewfinderActivity extends AppCompatActivity {
     private String cameraID;
     private String[] cameras;
     private int cameraFacing;
+    private final int ok = PackageManager.PERMISSION_GRANTED;
     private TextureView previewTexture;
     private Surface previewSurface;
     private Size previewSize;
@@ -55,26 +56,32 @@ public class ViewfinderActivity extends AppCompatActivity {
     protected void onStart(){
         super.onStart();
         startBackgroundThread();
+        findPermissions();
     }
     @Override
     protected void onResume(){
         super.onResume();
-        findPermissions();
         autoShutter();
     }
     @Override
     protected void onPause(){
-        try { cameraSession.stopRepeating();
-        } catch (CameraAccessException e) {}
-        cameraSession.close();
+        if (cameraSession != null) {
+            try {
+                cameraSession.stopRepeating();
+            } catch (CameraAccessException e) {}
+            catch (IllegalStateException e){}
+            cameraSession.close();
+        }
         super.onPause();
     }
     @Override
     protected void onStop(){
-        if (cameraSession != null)
-            onPause();
-        deviceCamera.close();
-        previewSurface.release();
+        if (deviceCamera != null)
+            try {
+                deviceCamera.close();
+            } catch (IllegalStateException e){}
+        if (previewSurface != null)
+            previewSurface.release();
         stopBackgroundThread();
         super.onStop();
     }
@@ -123,33 +130,36 @@ public class ViewfinderActivity extends AppCompatActivity {
         Intent intent = new Intent(ViewfinderActivity.this, SettingsActivity.class);
         startActivity(intent);
     }
-    protected void setPermissions(View view){
-
-    }
     private void findPermissions (){
-        if (ContextCompat.checkSelfPermission(this,
-                Manifest.permission.CAMERA)
-                != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this,
-                    new String[]{Manifest.permission.CAMERA}, 1);
+        final String [] permLegend = {Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE};
+        int reqCode = 0;
+        if (ContextCompat.checkSelfPermission(this, permLegend[0]) != ok)
+            reqCode++;
+        if (ContextCompat.checkSelfPermission(this, permLegend[1]) != ok)
+            reqCode = reqCode + 2;
+        switch (reqCode){
+            case 0:{
+                findSurface();
+                break;
+            } case 1:case 2:{
+                ActivityCompat.requestPermissions(this, new String[]{permLegend[(reqCode-1)]}, reqCode);
+                break;
+            } case 3:{
+                ActivityCompat.requestPermissions(this, new String[]{permLegend[0]}, reqCode);
+                break;
+            }
         }
-        else
-            findSurface();
     }
     @Override
-    public void onRequestPermissionsResult(int requestCode,
-                                           @NonNull String permissions[], @NonNull int[] grantResults) {
-        switch (requestCode) {
-            case 1: {
-                if (grantResults.length > 0
-                        && grantResults[0] == PackageManager.PERMISSION_GRANTED)
-                    findSurface();
-                else
-                    noPermissions();
-            }}
+    public void onRequestPermissionsResult(int requestCode, @NonNull String permissions[], @NonNull int[] grantResults) {
+        if (grantResults[0] != ok)
+            noPermissions();
+        else
+            findPermissions();
     }
     private void noPermissions (){
-        setContentView(R.layout.activity_permissions);
+        Intent intent = new Intent(ViewfinderActivity.this, PermissionActivity.class);
+        startActivity(intent);
     }
     private void findSurface(){
         if (previewTexture.isAvailable()) {

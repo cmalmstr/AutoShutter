@@ -7,10 +7,9 @@
     <string name="permissionbutton">Set permissions</string>
     <string name="permissions">AutoShutter needs permisson to access your device\'s camera and file
         storage in order to capture and save photos. \
-        \
-        It also needs permission to access the device
-        sensors to calculate when the device is held still, which triggers the photo capture.\
+
     \
+
     Please consider giving the app these permissions in order for it to work as intended.</string>
 
     <!-- Strings related to Settings -->

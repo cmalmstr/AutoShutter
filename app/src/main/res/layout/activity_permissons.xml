@@ -5,7 +5,7 @@
     android:layout_height="match_parent"
     android:background="@android:color/white"
     android:clickable="false"
-    tools:context="com.carlm.autoshutter.ViewfinderActivity">
+    tools:context="com.carlm.autoshutter.PermissionActivity">
 
     <TextView
         android:id="@+id/permissionText"
