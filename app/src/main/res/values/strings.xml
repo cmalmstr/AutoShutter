@@ -3,6 +3,7 @@
     <string name="alt_settings">Go to Settings</string>
     <string name="alt_swap">Switch between front and back camera</string>
     <string name="alt_pause">Pause auto capture</string>
+    <string name="alt_play">Resume auto capture</string>
     <string name="pause_txt">Paused</string>
     <string name="hold_still_txt">Hold still to capture photo</string>
     <string name="capture_txt">Photo captured</string>

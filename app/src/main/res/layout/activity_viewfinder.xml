@@ -62,6 +62,27 @@
         app:layout_constraintRight_toRightOf="parent"
         app:srcCompat="@drawable/ic_pause_circle_outline_white_24px" />
 
+    <ImageButton
+        android:id="@+id/playButton"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_marginBottom="8dp"
+        android:layout_marginEnd="0dp"
+        android:layout_marginLeft="0dp"
+        android:layout_marginRight="0dp"
+        android:adjustViewBounds="false"
+        android:background="@android:color/transparent"
+        android:clickable="true"
+        android:contentDescription="@string/alt_play"
+        android:cropToPadding="false"
+        android:elevation="4dp"
+        android:onClick="onClickPlay"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toRightOf="parent"
+        app:srcCompat="@drawable/ic_play_circle_outline_black_24dp" />
+
     <TextureView
         android:id="@+id/viewfinderView"
         android:layout_width="0dp"

@@ -1,6 +1,7 @@
 package com.carlm.autoshutter;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -39,8 +40,8 @@ public class ViewfinderActivity extends AppCompatActivity {
     private CameraManager cameraman;
     private CameraDevice deviceCamera;
     private CameraCaptureSession cameraSession;
-    CaptureRequest.Builder previewRequest;
-    CaptureRequest.Builder captureRequest;
+    private CaptureRequest.Builder previewRequest;
+    private CaptureRequest.Builder captureRequest;
     private String cameraID;
     private String[] cameras;
     private int setCameraDirection;
@@ -55,7 +56,6 @@ public class ViewfinderActivity extends AppCompatActivity {
     private Size previewSize;
     private Size captureSize;
     private Size screenSize;
-    private ImageReader imageReader;
     private File imageFile;
     private TextView feedback;
     private CountDownTimer countdown;
@@ -111,6 +111,7 @@ public class ViewfinderActivity extends AppCompatActivity {
         if (countdown != null)
             countdown.cancel();
         countdown = new CountDownTimer(delay*1000, 100) {
+            @SuppressLint("SetTextI18n")
             @Override
             public void onTick(long millisUntilFinished) {
                 feedback.setText(Long.toString((millisUntilFinished+1000-1)/1000));
@@ -184,7 +185,7 @@ public class ViewfinderActivity extends AppCompatActivity {
         SurfaceTexture texture = previewTexture.getSurfaceTexture();
         texture.setDefaultBufferSize(previewSize.getWidth(), previewSize.getHeight());
         previewSurface = new Surface(texture);
-        imageReader = ImageReader.newInstance(captureSize.getWidth(), captureSize.getHeight(), ImageFormat.JPEG, 1);
+        ImageReader imageReader = ImageReader.newInstance(captureSize.getWidth(), captureSize.getHeight(), ImageFormat.JPEG, 1);
         imageReader.setOnImageAvailableListener(readerHandler, backgroundHandler);
         readerSurface = imageReader.getSurface();
         outputList = Arrays.asList(readerSurface, previewSurface);
@@ -249,7 +250,8 @@ public class ViewfinderActivity extends AppCompatActivity {
         public void onCaptureCompleted(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request,
                                        @NonNull TotalCaptureResult result) {
             super.onCaptureCompleted(session, request, result);
-            prepareOutputSurfaces();}
+            startPreview();
+        }
     };
     private final TextureView.SurfaceTextureListener viewHandler = new TextureView.SurfaceTextureListener(){
         public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
@@ -285,15 +287,16 @@ public class ViewfinderActivity extends AppCompatActivity {
             }
         }
     };
-    @SuppressWarnings("UnusedParameters")
     public void onClickPause(View view){
-        if (countdown != null) {
-            countdown.cancel();
-            countdown = null;
-            feedback.setText(R.string.pause_txt);
-        }
-        else
-            autoShutter(shutterDelay);
+        countdown.cancel();
+        feedback.setText(R.string.pause_txt);
+        view.setVisibility(View.GONE);
+        findViewById(R.id.playButton).setVisibility(View.VISIBLE);
+    }
+    public void onClickPlay(View view){
+        autoShutter(shutterDelay);
+        view.setVisibility(View.GONE);
+        findViewById(R.id.pauseButton).setVisibility(View.VISIBLE);
     }
     @SuppressWarnings("UnusedParameters")
     public void onClickSwap(View view){
