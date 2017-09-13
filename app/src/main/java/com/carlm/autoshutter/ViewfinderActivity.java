@@ -54,8 +54,8 @@ public class ViewfinderActivity extends AppCompatActivity {
                 Resources.getSystem().getDisplayMetrics().heightPixels);
         sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
         setContentView(R.layout.activity_viewfinder);
-        feedback = (TextView)findViewById(R.id.shutterText);
-        previewTexture = (TextureView) findViewById(R.id.viewfinderView);
+        feedback = findViewById(R.id.shutterText);
+        previewTexture = findViewById(R.id.viewfinderView);
     }
     @Override
     protected void onStart(){
