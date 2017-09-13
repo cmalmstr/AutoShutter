@@ -124,8 +124,11 @@ public class ViewfinderActivity extends AppCompatActivity {
         }.start();
     }
     private void capture (){
-        try { deviceCamera.createCaptureSession(outputList, captureSessionHandler, backgroundHandler);
+        try { deviceCamera.createCaptureSession(outputList, captureSessionHandler, null);
         } catch (CameraAccessException e) {System.err.println("Can\'t access camera to start session");}
+    }
+    private void reset(){
+        startPreview();
     }
     private void checkPermissions(){
         if (ContextCompat.checkSelfPermission(this, permLegend[0]) != ok)
@@ -250,7 +253,7 @@ public class ViewfinderActivity extends AppCompatActivity {
         public void onCaptureCompleted(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request,
                                        @NonNull TotalCaptureResult result) {
             super.onCaptureCompleted(session, request, result);
-            startPreview();
+            reset();
         }
     };
     private final TextureView.SurfaceTextureListener viewHandler = new TextureView.SurfaceTextureListener(){
