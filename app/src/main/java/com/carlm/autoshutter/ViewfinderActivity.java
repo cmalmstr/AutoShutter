@@ -1,6 +1,7 @@
 package com.carlm.autoshutter;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -70,9 +71,8 @@ public class ViewfinderActivity extends AppCompatActivity {
     @Override
     protected void onPause(){
         if (cameraSession != null) {
-            try {
-                cameraSession.stopRepeating();
-            } catch (CameraAccessException | IllegalStateException e) {}
+            try { cameraSession.stopRepeating();
+            } catch (CameraAccessException | IllegalStateException e) {System.err.println("Session already closed");}
             cameraSession.close();
         }
         if (countdown != null)
@@ -84,7 +84,7 @@ public class ViewfinderActivity extends AppCompatActivity {
         if (deviceCamera != null)
             try {
                 deviceCamera.close();
-            } catch (IllegalStateException e){}
+            } catch (IllegalStateException e){System.err.println("Camera already closed");}
         if (previewSurface != null)
             previewSurface.release();
         stopBackgroundThread();
@@ -96,10 +96,12 @@ public class ViewfinderActivity extends AppCompatActivity {
         if (countdown != null)
             countdown.cancel();
         countdown = new CountDownTimer(delay*1000, interval) {
+            @SuppressLint("SetTextI18n")
             @Override
             public void onTick(long millisUntilFinished) {
                 feedback.setText((millisUntilFinished+1000-1)/1000 + "s");
             }
+            @SuppressLint("SetTextI18n")
             @Override
             public void onFinish() {
                 feedback.setText("0s");
@@ -108,8 +110,10 @@ public class ViewfinderActivity extends AppCompatActivity {
         }.start();
     }
     private void capture (){
+        feedback.setText(R.string.capture_txt);
     }
-    protected void swapCameras (View view){
+    @SuppressWarnings("UnusedParameters")
+    public void onClickSwap(View view){
         if (cameraFacing == CameraCharacteristics.LENS_FACING_BACK)
             cameraFacing = CameraCharacteristics.LENS_FACING_FRONT;
         else
@@ -119,7 +123,8 @@ public class ViewfinderActivity extends AppCompatActivity {
         findCamera();
         onResume();
     }
-    protected void pauseCount (View view){
+    @SuppressWarnings("UnusedParameters")
+    public void onClickPause(View view){
         if (countdown != null) {
             countdown.cancel();
             countdown = null;
@@ -128,7 +133,8 @@ public class ViewfinderActivity extends AppCompatActivity {
         else
             autoShutter();
     }
-    protected void openSettings (View view){
+    @SuppressWarnings("UnusedParameters")
+    public void onClickSettings(View view){
         startActivity (new Intent(ViewfinderActivity.this, SettingsActivity.class));
     }
     private void checkPermissions(){
@@ -155,7 +161,7 @@ public class ViewfinderActivity extends AppCompatActivity {
         else
             previewTexture.setSurfaceTextureListener(viewHandler);
     }
-    private TextureView.SurfaceTextureListener viewHandler = new TextureView.SurfaceTextureListener(){
+    private final TextureView.SurfaceTextureListener viewHandler = new TextureView.SurfaceTextureListener(){
         public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {initCamera();}
         public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) {}
         public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {previewTexture = null;return false;}
@@ -165,7 +171,7 @@ public class ViewfinderActivity extends AppCompatActivity {
         cameraman = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
         try{ cameras = cameraman.getCameraIdList();
             cameraFacing = CameraCharacteristics.LENS_FACING_BACK;
-        } catch (CameraAccessException e){}
+        } catch (CameraAccessException e){System.err.println("Camera manager can\'t find cameras");}
         findCamera();
     }
     private void findCamera() {
@@ -176,16 +182,20 @@ public class ViewfinderActivity extends AppCompatActivity {
             faceValue = chars.get(CameraCharacteristics.LENS_FACING);
             if (faceValue != null && faceValue == cameraFacing) {
                 cameraID = camID;
-                setSizes(chars.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP).getOutputSizes(ImageFormat.JPEG));
-                break;
+                Size[] sizesAvailable = chars.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP).getOutputSizes(ImageFormat.JPEG);
+                if (sizesAvailable != null) {
+                    setSizes(sizesAvailable);
+                    break;
+                }
             }
         }
         cameraman.openCamera(cameraID, cameraHandler, backgroundHandler);
-        } catch (SecurityException | CameraAccessException e) {}
+        } catch (SecurityException | CameraAccessException | NullPointerException e) {
+            System.err.println("Camera manager can\'t open camera");}
     }
-    private void setSizes (Size[] JPGsizes){
-        previewSize = new Size(JPGsizes[0].getWidth(), JPGsizes[0].getHeight());
-        for (Size size : JPGsizes) {
+    private void setSizes (Size[] jpgSizes){
+        previewSize = new Size(jpgSizes[0].getWidth(), jpgSizes[0].getHeight());
+        for (Size size : jpgSizes) {
             int thisWidth = size.getWidth();
             int thisHeight = size.getHeight();
             if (thisWidth > screenSize.getWidth() && thisWidth < previewSize.getWidth() &&
@@ -193,7 +203,7 @@ public class ViewfinderActivity extends AppCompatActivity {
                 previewSize = new Size(thisWidth, thisHeight);
         }
     }
-    private CameraDevice.StateCallback cameraHandler = new CameraDevice.StateCallback() {
+    private final CameraDevice.StateCallback cameraHandler = new CameraDevice.StateCallback() {
         public void onOpened(@NonNull CameraDevice camera){
             deviceCamera = camera;
             initPreview();
@@ -211,9 +221,9 @@ public class ViewfinderActivity extends AppCompatActivity {
         previewSurface = new Surface(texture);
         List<Surface> outputList = Arrays.asList(previewSurface);
         try { deviceCamera.createCaptureSession(outputList, previewSessionHandler, null);
-        } catch (CameraAccessException e) {}
+        } catch (CameraAccessException e) {System.err.println("Can\'t access camera to start session");}
     }
-    private CameraCaptureSession.StateCallback previewSessionHandler = new CameraCaptureSession.StateCallback() {
+    private final CameraCaptureSession.StateCallback previewSessionHandler = new CameraCaptureSession.StateCallback() {
         public void onConfigured(@NonNull CameraCaptureSession session){
             cameraSession = session;
             try {
@@ -221,7 +231,7 @@ public class ViewfinderActivity extends AppCompatActivity {
                 previewRequest.addTarget(previewSurface);
                 previewRequest.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO);
                 session.setRepeatingRequest(previewRequest.build(), null, backgroundHandler);
-            } catch (CameraAccessException e){}
+            } catch (CameraAccessException e){System.err.println("Preview session can\'t build request");}
         }
         public void onConfigureFailed(@NonNull CameraCaptureSession session) {initCamera();}
         public void onClosed(@NonNull CameraCaptureSession session){cameraSession = null;}
@@ -237,6 +247,6 @@ public class ViewfinderActivity extends AppCompatActivity {
             backgroundThread.join();
             backgroundThread = null;
             backgroundHandler = null;
-        } catch (InterruptedException e) {}
+        } catch (InterruptedException e) {System.err.println("Couldn\'t join background thread");}
     }
 }

@@ -11,7 +11,8 @@ public class PermissionActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_permissons);
     }
-    protected void setPermissions(View view){
+    @SuppressWarnings("UnusedParameters")
+    public void onClickPermissions(View view){
         startActivity(new Intent(PermissionActivity.this, ViewfinderActivity.class));
     }
 }

@@ -20,7 +20,7 @@
         android:contentDescription="@string/alt_settings"
         android:cropToPadding="false"
         android:elevation="4dp"
-        android:onClick="openSettings"
+        android:onClick="onClickSettings"
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:srcCompat="@drawable/ic_settings_black_24dp" />
@@ -37,7 +37,7 @@
         android:contentDescription="@string/alt_swap"
         android:cropToPadding="false"
         android:elevation="4dp"
-        android:onClick="swapCameras"
+        android:onClick="onClickSwap"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:srcCompat="@drawable/ic_swap_horiz_white_24px" />
@@ -56,7 +56,7 @@
         android:contentDescription="@string/alt_pause"
         android:cropToPadding="false"
         android:elevation="4dp"
-        android:onClick="pauseCount"
+        android:onClick="onClickPause"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"

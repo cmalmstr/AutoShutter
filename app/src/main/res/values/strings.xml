@@ -5,8 +5,9 @@
     <string name="alt_pause">Pause auto capture</string>
     <string name="pause_txt">Paused</string>
     <string name="hold_still_txt">Hold still to capture photo</string>
+    <string name="capture_txt">Photo captured</string>
     <string name="permission_button">Set permissions</string>
-    <string name="permission_txt_1">AutoShutter needs permisson to access your device\'s camera and file
+    <string name="permission_txt_1">AutoShutter needs permission to access your device\'s camera and file
         storage in order to capture and save photos.</string>
     <string name="permission_txt_2">Please consider giving the app these permissions in order for it to work as intended.</string>
 
