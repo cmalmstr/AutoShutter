@@ -9,6 +9,7 @@ import android.content.pm.PackageManager;
 import android.content.res.Resources;
 import android.graphics.ImageFormat;
 import android.graphics.SurfaceTexture;
+import android.media.ImageReader;
 import android.os.CountDownTimer;
 import android.os.Bundle;
 import android.os.Handler;
@@ -25,6 +26,7 @@ import android.widget.TextView;
 import android.hardware.camera2.*;
 import android.util.Size;
 
+import java.io.File;
 import java.util.Arrays;
 import java.util.List;
 
@@ -39,8 +41,12 @@ public class ViewfinderActivity extends AppCompatActivity {
     private final String [] permLegend = {Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE};
     private TextureView previewTexture;
     private Surface previewSurface;
+    private Surface readerSurface;
     private Size previewSize;
+    private Size captureSize;
     private Size screenSize;
+    private ImageReader imageReader;
+    private File imageFile;
     private TextView feedback;
     private CountDownTimer countdown;
     private Handler backgroundHandler;
@@ -207,6 +213,7 @@ public class ViewfinderActivity extends AppCompatActivity {
         public void onOpened(@NonNull CameraDevice camera){
             deviceCamera = camera;
             initPreview();
+            initCapture();
         }
         public void onClosed(@NonNull CameraDevice camera){
             deviceCamera.close();
@@ -223,6 +230,10 @@ public class ViewfinderActivity extends AppCompatActivity {
         try { deviceCamera.createCaptureSession(outputList, previewSessionHandler, null);
         } catch (CameraAccessException e) {System.err.println("Can\'t access camera to start session");}
     }
+    private void initCapture(){
+        imageReader = ImageReader.newInstance(captureSize.getWidth(), captureSize.getHeight(), ImageFormat.JPEG, 1);
+        readerSurface = imageReader.getSurface();
+    }
     private final CameraCaptureSession.StateCallback previewSessionHandler = new CameraCaptureSession.StateCallback() {
         public void onConfigured(@NonNull CameraCaptureSession session){
             cameraSession = session;
@@ -235,6 +246,23 @@ public class ViewfinderActivity extends AppCompatActivity {
         }
         public void onConfigureFailed(@NonNull CameraCaptureSession session) {initCamera();}
         public void onClosed(@NonNull CameraCaptureSession session){cameraSession = null;}
+    };
+    private final CameraCaptureSession.StateCallback captureSessionHandler = new CameraCaptureSession.StateCallback() {
+        public void onConfigured(@NonNull CameraCaptureSession session){
+            try {
+                CaptureRequest.Builder captureRequest = deviceCamera.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
+                captureRequest.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO);
+                captureRequest.addTarget(readerSurface);
+            } catch (CameraAccessException e){System.err.println("Capture session can\'t build request");}
+        }
+        public void onConfigureFailed(@NonNull CameraCaptureSession session) {initCamera();}
+        public void onClosed(@NonNull CameraCaptureSession session){cameraSession = null;}
+    };
+    private final CameraCaptureSession.CaptureCallback captureHandler = new CameraCaptureSession.CaptureCallback() {
+        @Override
+        public void onCaptureCompleted(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request, @NonNull TotalCaptureResult result) {
+            super.onCaptureCompleted(session, request, result);
+        }
     };
     private void startBackgroundThread() {
         backgroundThread = new HandlerThread("Camera Background");
