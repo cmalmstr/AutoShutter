@@ -207,6 +207,7 @@ public class ViewfinderActivity extends AppCompatActivity {
             if (thisWidth > screenSize.getWidth() && thisWidth < previewSize.getWidth() &&
                     thisHeight > screenSize.getHeight() && thisHeight < previewSize.getHeight())
                 previewSize = new Size(thisWidth, thisHeight);
+            captureSize = previewSize;
         }
     }
     private final CameraDevice.StateCallback cameraHandler = new CameraDevice.StateCallback() {
