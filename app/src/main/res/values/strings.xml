@@ -1,13 +1,14 @@
 <resources>
     <string name="app_name">Auto Shutter</string>
-    <string name="settingsbutton">Go to Settings</string>
-    <string name="swapbutton">Switch between front and back camera</string>
-    <string name="pausebutton">Pause auto capture</string>
-    <string name="pausetext">Paused</string>
-    <string name="permissionbutton">Set permissions</string>
-    <string name="permissions">AutoShutter needs permisson to access your device\'s camera and file
+    <string name="alt_settings">Go to Settings</string>
+    <string name="alt_swap">Switch between front and back camera</string>
+    <string name="alt_pause">Pause auto capture</string>
+    <string name="pause_txt">Paused</string>
+    <string name="hold_still_txt">Hold still to capture photo</string>
+    <string name="permission_button">Set permissions</string>
+    <string name="permission_txt_1">AutoShutter needs permisson to access your device\'s camera and file
         storage in order to capture and save photos.</string>
-    <string name="permissions2">Please consider giving the app these permissions in order for it to work as intended.</string>
+    <string name="permission_txt_2">Please consider giving the app these permissions in order for it to work as intended.</string>
 
     <!-- Strings related to Settings -->
     <string name="pref_res_title">Photo resolution</string>

@@ -12,7 +12,6 @@ public class PermissionActivity extends AppCompatActivity {
         setContentView(R.layout.activity_permissons);
     }
     protected void setPermissions(View view){
-        Intent intent = new Intent(PermissionActivity.this, ViewfinderActivity.class);
-        startActivity(intent);
+        startActivity(new Intent(PermissionActivity.this, ViewfinderActivity.class));
     }
 }
