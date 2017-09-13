@@ -47,6 +47,7 @@ public class ViewfinderActivity extends AppCompatActivity {
     private int setCameraDirection;
     private int shutterDelay;
     private int lapseDelay;
+    private boolean timelapse;
     private final int ok = PackageManager.PERMISSION_GRANTED;
     private final String [] permLegend = {Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE};
     private TextureView previewTexture;
@@ -85,6 +86,7 @@ public class ViewfinderActivity extends AppCompatActivity {
         super.onResume();
         shutterDelay = Integer.parseInt(sharedPref.getString("delay",null));
         lapseDelay = Integer.parseInt(sharedPref.getString("frequency",null));
+        timelapse = sharedPref.getBoolean("timelapse",false);
         autoShutter(shutterDelay);
     }
     @Override
@@ -128,7 +130,15 @@ public class ViewfinderActivity extends AppCompatActivity {
         } catch (CameraAccessException e) {System.err.println("Can\'t access camera to start session");}
     }
     private void reset(){
+        if (cameraSession != null)
+            try { cameraSession.stopRepeating();
+                cameraSession.close();
+            } catch (CameraAccessException | IllegalStateException e) {System.err.println("Session already closed");}
         startPreview();
+        if (timelapse)
+            autoShutter(lapseDelay);
+        else
+            autoShutter(shutterDelay);
     }
     private void checkPermissions(){
         if (ContextCompat.checkSelfPermission(this, permLegend[0]) != ok)
@@ -227,13 +237,13 @@ public class ViewfinderActivity extends AppCompatActivity {
         captureRequest.addTarget(readerSurface);
     }
     private void startPreview(){
-        try { deviceCamera.createCaptureSession(outputList, previewSessionHandler, backgroundHandler);
+        try { deviceCamera.createCaptureSession(outputList, previewSessionHandler, null);
         } catch (CameraAccessException e) {System.err.println("Unable to start preview session");}
     }
     private final CameraCaptureSession.StateCallback previewSessionHandler = new CameraCaptureSession.StateCallback() {
         public void onConfigured(@NonNull CameraCaptureSession session){
             cameraSession = session;
-            try { session.setRepeatingRequest(previewRequest.build(), null, backgroundHandler);
+            try { session.setRepeatingRequest(previewRequest.build(), null, null);
             } catch (CameraAccessException e){System.err.println("Preview session can\'t build request");}
         }
         public void onConfigureFailed(@NonNull CameraCaptureSession session) {initCameraManager();}
@@ -242,7 +252,7 @@ public class ViewfinderActivity extends AppCompatActivity {
     private final CameraCaptureSession.StateCallback captureSessionHandler = new CameraCaptureSession.StateCallback() {
         public void onConfigured(@NonNull CameraCaptureSession session){
             imageFile = new File(Environment.getExternalStorageDirectory()+"/pic.jpg");
-            try { session.capture(captureRequest.build(), captureHandler, backgroundHandler);
+            try { session.capture(captureRequest.build(), captureHandler, null);
             } catch (CameraAccessException e){System.err.println("Capture session can\'t build request");}
         }
         public void onConfigureFailed(@NonNull CameraCaptureSession session) {initCameraManager();}
