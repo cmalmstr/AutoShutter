@@ -60,7 +60,7 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
     private int lapseDelay;
     private boolean timelapse;
     private boolean paused;
-    SensorManager sensorManager;
+    private SensorManager sensorManager;
     private float[] referenceAcceleration;
     private float shakeTolerance;
     private TextureView previewTexture;
