@@ -59,6 +59,8 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
     private int shutterDelay;
     private int lapseDelay;
     private boolean timelapse;
+    private boolean paused;
+    SensorManager sensorManager;
     private float[] referenceAcceleration;
     private float shakeTolerance;
     private TextureView previewTexture;
@@ -69,6 +71,7 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
     private File dir;
     private File imageFile;
     private TextView feedback;
+    private TextView feedback2;
     private CountDownTimer countdown;
     private Handler backgroundHandler;
     private HandlerThread backgroundThread;
@@ -78,47 +81,48 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
         super.onCreate(savedInstanceState);
         PreferenceManager.setDefaultValues(this, R.xml.pref_general, false);
         sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
+        dir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM) + "/autoshutter");
+        sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
         setCameraDirection = CameraCharacteristics.LENS_FACING_BACK;
         referenceAcceleration = new float[]{0,0,0};
         shakeTolerance = 1;
-        SensorManager sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
-        sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER),
-                1000000, 2000000, backgroundHandler);
+        paused = false;
         setContentView(R.layout.activity_viewfinder);
         feedback = findViewById(R.id.shutterText);
+        feedback2 = findViewById(R.id.shutterText2);
         previewTexture = findViewById(R.id.viewfinderView);
     }
     @Override
     protected void onStart(){
         super.onStart();
         startBackgroundThread();
-        initSensor();
         checkPermissions();
     }
     @Override
     protected void onResume(){
         super.onResume();
+        sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER),
+                1000000, 2000000, null);
         shutterDelay = Integer.parseInt(sharedPref.getString("delay",null));
         lapseDelay = Integer.parseInt(sharedPref.getString("frequency",null));
         timelapse = sharedPref.getBoolean("timelapse",false);
+        feedback.setText(R.string.hold_still_txt);
         autoShutter(shutterDelay);
     }
     @Override
     protected void onPause(){
         super.onPause();
+        sensorManager.unregisterListener(this);
         if (countdown != null)
             countdown.cancel();
     }
     @Override
     protected void onStop(){
         super.onStop();
-        if (cameraSession != null)
-            try { cameraSession.stopRepeating();
-                cameraSession.close();
-            } catch (CameraAccessException | IllegalStateException e) {System.err.println("Session already closed");}
-        if (deviceCamera != null)
-            try { deviceCamera.close();
-            } catch (IllegalStateException e){System.err.println("Camera already closed");}
+        try { cameraSession.stopRepeating();
+            cameraSession.close();
+            deviceCamera.close();
+        } catch (CameraAccessException | IllegalStateException | NullPointerException e) {System.err.println("Session already closed");}
         stopBackgroundThread();
     }
     private void autoShutter(int delay){
@@ -128,7 +132,7 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
             @SuppressLint("SetTextI18n")
             @Override
             public void onTick(long millisUntilFinished) {
-                feedback.setText(Long.toString((millisUntilFinished+1000-1)/1000));
+                feedback2.setText(Long.toString((millisUntilFinished+1000-1)/1000));
             }
             @Override
             public void onFinish() {
@@ -138,25 +142,23 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
         }.start();
     }
     private void capture (){
-        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+        @SuppressLint("SimpleDateFormat") String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmssSSS").format(new Date());
         imageFile = new File(dir, timeStamp + ".jpg");
         try { cameraSession.capture(captureRequest.build(), null, backgroundHandler);
-            } catch (CameraAccessException | IllegalStateException e) {System.err.println("Capture session can\'t build request");}
-        reset();
-    }
-    private void reset(){
-        if (timelapse)
-            autoShutter(lapseDelay);
-       // else
-            //MESSAGE ABOUT MOVING PHONE TO CAPTURE NEW
-    }
-    private void initSensor(){
+            } catch (CameraAccessException | IllegalStateException | NullPointerException e) {System.err.println("Capture session can\'t build request");}
+        if (timelapse){
+            feedback.setText(R.string.lapse_capture_txt);
+            autoShutter(lapseDelay);}
+        else
+            feedback2.setText(R.string.final_capture_txt);
     }
     @Override
     public void onSensorChanged(SensorEvent event){
         for (int i=0;i<referenceAcceleration.length;i++){
-            if(abs(event.values[i]-referenceAcceleration[i]) > shakeTolerance)
+            if(abs(event.values[i]-referenceAcceleration[i]) > shakeTolerance) {
+                feedback.setText(R.string.hold_still_txt);
                 autoShutter(shutterDelay);
+            }
             referenceAcceleration[i] = event.values[i];
         }
     }
@@ -184,14 +186,16 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
         startActivity(new Intent(ViewfinderActivity.this, PermissionActivity.class));
     }
     private void initManager(){
-        dir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM) + "/autoshutter");
-        if (!dir.exists())
-            dir.mkdir();
-        if (cameraManager == null)
-            cameraManager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
-        try{ String [] cameras = cameraManager.getCameraIdList();
-            findCamera(cameras);
-        } catch (CameraAccessException e){System.err.println("Camera manager can\'t find cameras");}
+        if (dir.exists() || dir.mkdir()) {
+            if (cameraManager == null)
+                cameraManager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
+            try {
+                String[] cameras = cameraManager.getCameraIdList();
+                findCamera(cameras);
+            } catch (CameraAccessException e) {
+                System.err.println("Camera manager can\'t find cameras");
+            }
+        }
     }
     private void findCamera(String[] cameras) {
         CameraCharacteristics cameraCharacter;
@@ -215,15 +219,21 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
         int captureWidth = previewWidth;
         int captureHeight = previewHeight;
         boolean max = false;
-        switch(sharedPref.getString("resolution",null)) {
-            case("hd"):
+        switch(sharedPref.getString("resolution","max")) {
+            case ("hd"):
                 captureWidth = 1280;
                 captureHeight = 720;
+                break;
             case("fhd"):
                 captureWidth = 1920;
                 captureHeight = 1080;
+                break;
             case("max"):
                 max = true;
+                break;
+            default:
+                max = true;
+                break;
         }
         List<Size> bigEnoughPreview = new ArrayList<>();
         List<Size> bigEnoughCapture = new ArrayList<>();
@@ -321,8 +331,7 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
     private final ImageReader.OnImageAvailableListener readerHandler = new ImageReader.OnImageAvailableListener() {
         @Override
         public void onImageAvailable(ImageReader reader) {
-            Image image = null;
-            try { image = imageReader.acquireNextImage();
+            try { Image image = imageReader.acquireNextImage();
                 ByteBuffer buffer = image.getPlanes()[0].getBuffer();
                 byte[] bytes = new byte[buffer.capacity()];
                 buffer.get(bytes);
@@ -333,22 +342,23 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
             }
         }
         private void save(byte[] bytes) throws IOException {
-            OutputStream output = null;
-            try {
-                output = new FileOutputStream(imageFile);
-                output.write(bytes);
-                output.close();
-            } catch (IOException e) {
-                System.err.println("Image file could not be buffered/saved");}
+            OutputStream output = new FileOutputStream(imageFile);
+            output.write(bytes);
+            output.close();
         }
     };
+    @SuppressWarnings("WeakerAccess")
     public void onClickPause(View view){
+        paused = true;
         countdown.cancel();
         feedback.setText(R.string.pause_txt);
+        feedback2.setText("");
         view.setVisibility(View.GONE);
         findViewById(R.id.playButton).setVisibility(View.VISIBLE);
     }
     public void onClickPlay(View view){
+        paused = false;
+        feedback.setText(R.string.hold_still_txt);
         autoShutter(shutterDelay);
         view.setVisibility(View.GONE);
         findViewById(R.id.pauseButton).setVisibility(View.VISIBLE);
@@ -363,6 +373,8 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
         deviceCamera.close();
         initManager();
         onResume();
+        if (paused)
+            onClickPause(findViewById(R.id.pauseButton));
     }
     @SuppressWarnings("UnusedParameters")
     public void onClickSettings(View view){
