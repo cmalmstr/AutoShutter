@@ -47,6 +47,8 @@
         android:layout_width="48dp"
         android:layout_height="48dp"
         android:layout_marginBottom="0dp"
+        android:layout_marginEnd="8dp"
+        android:layout_marginTop="0dp"
         android:adjustViewBounds="false"
         android:background="@android:color/transparent"
         android:clickable="true"
@@ -55,19 +57,18 @@
         android:elevation="4dp"
         android:onClick="onClickPause"
         app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintHorizontal_bias="1.0"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
-        app:srcCompat="@drawable/ic_pause_circle_outline_white_24px"
-        app:layout_constraintHorizontal_bias="1.0"
         app:layout_constraintTop_toTopOf="@+id/viewfinderView"
-        android:layout_marginTop="0dp"
-        android:layout_marginRight="8dp" />
+        app:srcCompat="@drawable/ic_pause_circle_outline_white_24px" />
 
     <ImageButton
         android:id="@+id/playButton"
         android:layout_width="48dp"
         android:layout_height="48dp"
         android:layout_marginBottom="0dp"
+        android:layout_marginEnd="8dp"
         android:layout_marginTop="0dp"
         android:adjustViewBounds="false"
         android:background="@android:color/transparent"
@@ -82,8 +83,7 @@
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:srcCompat="@drawable/ic_play_circle_outline_black_24dp"
-        android:layout_marginRight="8dp" />
+        app:srcCompat="@drawable/ic_play_circle_outline_black_24dp" />
 
     <TextureView
         android:id="@+id/viewfinderView"
