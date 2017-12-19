@@ -62,6 +62,7 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
     private float[] referenceAcceleration;
     private float shakeTolerance;
     private TextureView previewTexture;
+    private ImageReader imageReader;
     private List<Surface> outputList;
     private Size previewSize;
     private Size captureSize;
@@ -257,7 +258,7 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
             SurfaceTexture texture = previewTexture.getSurfaceTexture();
             texture.setDefaultBufferSize(previewSize.getWidth(), previewSize.getHeight());
             Surface previewSurface = new Surface(texture);
-            ImageReader imageReader = ImageReader.newInstance(captureSize.getWidth(), captureSize.getHeight(), ImageFormat.JPEG, 1);
+            imageReader = ImageReader.newInstance(captureSize.getWidth(), captureSize.getHeight(), ImageFormat.JPEG, 1);
             imageReader.setOnImageAvailableListener(readerHandler, null);
             Surface readerSurface = imageReader.getSurface();
             outputList = Arrays.asList(previewSurface, readerSurface);
@@ -321,7 +322,7 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
         @Override
         public void onImageAvailable(ImageReader reader) {
             Image image = null;
-            try { image = reader.acquireNextImage();
+            try { image = imageReader.acquireNextImage();
                 ByteBuffer buffer = image.getPlanes()[0].getBuffer();
                 byte[] bytes = new byte[buffer.capacity()];
                 buffer.get(bytes);
