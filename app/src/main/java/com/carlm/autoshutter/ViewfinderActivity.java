@@ -37,7 +37,12 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Date;
 import java.util.List;
 
 import static java.lang.Math.abs;
@@ -60,11 +65,13 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
     private List<Surface> outputList;
     private Size previewSize;
     private Size captureSize;
+    private File dir;
     private File imageFile;
     private TextView feedback;
     private CountDownTimer countdown;
     private Handler backgroundHandler;
     private HandlerThread backgroundThread;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -97,9 +104,9 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
     }
     @Override
     protected void onPause(){
+        super.onPause();
         if (countdown != null)
             countdown.cancel();
-        super.onPause();
     }
     @Override
     protected void onStop(){
@@ -132,22 +139,19 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
         }.start();
     }
     private void capture (){
-        try { deviceCamera.createCaptureSession(outputList, captureSessionHandler, null);
-        } catch (CameraAccessException e) {System.err.println("Can\'t access camera to start session");}
+        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+        imageFile = new File(dir, timeStamp + ".jpg");
+        try { cameraSession.capture(captureRequest.build(), null, null);
+            } catch (CameraAccessException | IllegalStateException e) {System.err.println("Capture session can\'t build request");}
+        reset();
     }
     private void reset(){
-        if (cameraSession != null)
-            try { cameraSession.stopRepeating();
-                cameraSession.close();
-            } catch (CameraAccessException | IllegalStateException e) {System.err.println("Session already closed");}
-        startPreview();
         if (timelapse)
             autoShutter(lapseDelay);
         else
             autoShutter(shutterDelay);
     }
     private void initSensor(){
-
     }
     @Override
     public void onSensorChanged(SensorEvent event){
@@ -167,7 +171,7 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
         else if (ContextCompat.checkSelfPermission(this, permLegend[1]) != ok)
             ActivityCompat.requestPermissions(this, new String[]{permLegend[1]}, 0);
         else
-            initCameraManager();
+            initManager();
     }
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String permissions[], @NonNull int[] grantResults) {
@@ -179,7 +183,10 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
     private void permissionsMissing() {
         startActivity(new Intent(ViewfinderActivity.this, PermissionActivity.class));
     }
-    private void initCameraManager(){
+    private void initManager(){
+        dir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM) + "/autoshutter");
+        if (!dir.exists())
+            dir.mkdir();
         if (cameraManager == null)
             cameraManager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
         try{ String [] cameras = cameraManager.getCameraIdList();
@@ -203,17 +210,47 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
             System.err.println("Can\'t read camera characteristics or find output sizes");}
     }
     private void setOutputSizes(Size[] jpgSizes){
-        Size screenSize = new Size(Resources.getSystem().getDisplayMetrics().widthPixels,
-                Resources.getSystem().getDisplayMetrics().heightPixels);
-        previewSize = new Size(jpgSizes[0].getWidth(), jpgSizes[0].getHeight());
-        for (Size size : jpgSizes) {
-            int thisWidth = size.getWidth();
-            int thisHeight = size.getHeight();
-            if (thisWidth > screenSize.getWidth() && thisWidth < previewSize.getWidth() &&
-                    thisHeight > screenSize.getHeight() && thisHeight < previewSize.getHeight())
-                previewSize = new Size(thisWidth, thisHeight);
+        int previewWidth = Resources.getSystem().getDisplayMetrics().widthPixels;
+        int previewHeight = Resources.getSystem().getDisplayMetrics().heightPixels;
+        int captureWidth = previewWidth;
+        int captureHeight = previewHeight;
+        boolean max = false;
+        switch(sharedPref.getString("resolution",null)) {
+            case("hd"):
+                captureWidth = 1280;
+                captureHeight = 720;
+            case("fhd"):
+                captureWidth = 1920;
+                captureHeight = 1080;
+            case("max"):
+                max = true;
         }
-        captureSize = previewSize;
+        List<Size> bigEnoughPreview = new ArrayList<>();
+        List<Size> bigEnoughCapture = new ArrayList<>();
+        for (Size option : jpgSizes) {
+            int thisHeight = option.getHeight();
+            int thisWidth = option.getWidth();
+            if (thisHeight == thisWidth * previewHeight/previewWidth &&
+                    thisWidth >= previewWidth && thisHeight >= previewHeight)
+                bigEnoughPreview.add(option);
+            if (thisHeight == thisWidth * captureHeight/captureWidth &&
+                    thisWidth >= captureWidth && thisHeight >= captureHeight)
+                bigEnoughCapture.add(option);
+        }
+        if (bigEnoughPreview.size() > 0) {
+            Size size = Collections.min(bigEnoughPreview, new CompareSizesByArea());
+            previewSize = new Size(size.getWidth(), size.getHeight());
+        } else {
+            previewSize = new Size(jpgSizes[0].getWidth(), jpgSizes[0].getHeight());
+        }
+        if (bigEnoughCapture.size() > 0) {
+            Size size = Collections.min(bigEnoughCapture, new CompareSizesByArea());
+            if (max)
+                size = Collections.max(bigEnoughCapture, new CompareSizesByArea());
+            captureSize = new Size(size.getWidth(), size.getHeight());
+        } else {
+            captureSize = new Size(jpgSizes[0].getWidth(), jpgSizes[0].getHeight());
+        }
         prepareOutputSurfaces();
     }
     private void prepareOutputSurfaces() {
@@ -238,8 +275,8 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
     private final CameraDevice.StateCallback cameraHandler = new CameraDevice.StateCallback() {
         public void onOpened(@NonNull CameraDevice camera){
             deviceCamera = camera;
-            preparePreviewRequest();
             prepareCaptureRequest();
+            preparePreviewRequest();
         }
         public void onClosed(@NonNull CameraDevice camera){
             deviceCamera.close();
@@ -248,48 +285,32 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
         public void onDisconnected(@NonNull CameraDevice camera){this.onClosed(camera);}
         public void onError(@NonNull CameraDevice camera, int error){this.onClosed(camera);}
     };
-    private void preparePreviewRequest(){
-        try { previewRequest = deviceCamera.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
-        } catch (CameraAccessException e) {System.err.println("Unable to create capture request");}
-        previewRequest.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO);
-        previewRequest.addTarget(outputList.get(0));
-        startPreview();
-    }
     private void prepareCaptureRequest(){
         try { captureRequest = deviceCamera.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
         } catch (CameraAccessException e) {System.err.println("Unable to create capture request");}
         captureRequest.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO);
         captureRequest.addTarget(outputList.get(1));
     }
-    private void startPreview(){
-        try { deviceCamera.createCaptureSession(outputList, previewSessionHandler, null);
+    private void preparePreviewRequest(){
+        try { previewRequest = deviceCamera.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
+        } catch (CameraAccessException e) {System.err.println("Unable to create capture request");}
+        previewRequest.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO);
+        previewRequest.addTarget(outputList.get(0));
+        startCameraSession();
+    }
+    private void startCameraSession(){
+        try { deviceCamera.createCaptureSession(outputList, cameraSessionHandler, backgroundHandler);
         } catch (CameraAccessException e) {System.err.println("Unable to start preview session");}
     }
-    private final CameraCaptureSession.StateCallback previewSessionHandler = new CameraCaptureSession.StateCallback() {
+    private final CameraCaptureSession.StateCallback cameraSessionHandler = new CameraCaptureSession.StateCallback() {
         public void onConfigured(@NonNull CameraCaptureSession session){
             cameraSession = session;
-            try { session.setRepeatingRequest(previewRequest.build(), null, null);
+            try { session.setRepeatingRequest(previewRequest.build(), null, backgroundHandler);
             } catch (CameraAccessException e){System.err.println("Preview session can\'t build request");}
         }
-        public void onConfigureFailed(@NonNull CameraCaptureSession session) {initCameraManager();}
+        public void onConfigureFailed(@NonNull CameraCaptureSession session) {
+            initManager();}
         public void onClosed(@NonNull CameraCaptureSession session){cameraSession = null;}
-    };
-    private final CameraCaptureSession.StateCallback captureSessionHandler = new CameraCaptureSession.StateCallback() {
-        public void onConfigured(@NonNull CameraCaptureSession session){
-            imageFile = new File(Environment.getExternalStorageDirectory()+"/pic.jpg");
-            try { session.capture(captureRequest.build(), captureHandler, null);
-            } catch (CameraAccessException e){System.err.println("Capture session can\'t build request");}
-        }
-        public void onConfigureFailed(@NonNull CameraCaptureSession session) {initCameraManager();}
-        public void onClosed(@NonNull CameraCaptureSession session){cameraSession = null;}
-    };
-    private final CameraCaptureSession.CaptureCallback captureHandler = new CameraCaptureSession.CaptureCallback() {
-        @Override
-        public void onCaptureCompleted(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request,
-                                       @NonNull TotalCaptureResult result) {
-            super.onCaptureCompleted(session, request, result);
-            reset();
-        }
     };
     private final TextureView.SurfaceTextureListener viewHandler = new TextureView.SurfaceTextureListener(){
         public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
@@ -344,12 +365,19 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
             setCameraDirection = CameraCharacteristics.LENS_FACING_BACK;
         onPause();
         deviceCamera.close();
-        initCameraManager();
+        initManager();
         onResume();
     }
     @SuppressWarnings("UnusedParameters")
     public void onClickSettings(View view){
         startActivity (new Intent(ViewfinderActivity.this, SettingsActivity.class));
+    }
+    private static class CompareSizesByArea implements Comparator<Size> {
+        @Override
+        public int compare(Size lhs, Size rhs) {
+            return Long.signum((long) lhs.getWidth() * lhs.getHeight() -
+                    (long) rhs.getWidth() * rhs.getHeight());
+        }
     }
     private void startBackgroundThread() {
         backgroundThread = new HandlerThread("Camera Background");
