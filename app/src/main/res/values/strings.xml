@@ -26,7 +26,7 @@
         <item>max</item>
     </string-array>
     <string name="pref_init_title">Initial delay</string>
-    <string name="pref_init_def">5</string>
+    <string name="pref_init_def">5000</string>
     <string-array name="pref_init_titles">
         <item>2s</item>
         <item>5s</item>
@@ -35,16 +35,16 @@
         <item>30s</item>
     </string-array>
     <string-array name="pref_init_values">
-        <item>2</item>
-        <item>5</item>
-        <item>10</item>
-        <item>15</item>
-        <item>30</item>
+        <item>2000</item>
+        <item>5000</item>
+        <item>10000</item>
+        <item>15000</item>
+        <item>30000</item>
     </string-array>
     <string name="pref_timelapse_title">Timelapse mode</string>
     <string name="pref_timelapse_description">Keeps screen and enables timelapse photography</string>
     <string name="pref_freq_title">Timelapse frame interval</string>
-    <string name="pref_freq_def">1</string>
+    <string name="pref_freq_def">1000</string>
     <string-array name="pref_freq_titles">
         <item>0.1s</item>
         <item>0.2s</item>
@@ -56,14 +56,14 @@
         <item>60s</item>
     </string-array>
     <string-array name="pref_freq_values">
-        <item>0.1</item>
-        <item>0.2</item>
-        <item>0.5</item>
-        <item>1</item>
-        <item>5</item>
-        <item>10</item>
-        <item>30</item>
-        <item>60</item>
+        <item>100</item>
+        <item>200</item>
+        <item>500</item>
+        <item>1000</item>
+        <item>5000</item>
+        <item>10000</item>
+        <item>30000</item>
+        <item>60000</item>
     </string-array>
     <string name="pref_donate">Donate</string>
 </resources>

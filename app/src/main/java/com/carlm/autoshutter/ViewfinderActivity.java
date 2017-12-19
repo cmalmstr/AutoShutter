@@ -110,6 +110,7 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
     }
     @Override
     protected void onStop(){
+        super.onStop();
         if (cameraSession != null)
             try { cameraSession.stopRepeating();
                 cameraSession.close();
@@ -117,15 +118,12 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
         if (deviceCamera != null)
             try { deviceCamera.close();
             } catch (IllegalStateException e){System.err.println("Camera already closed");}
-        if (outputList.get(0) != null)
-            outputList.get(0).release();
         stopBackgroundThread();
-        super.onStop();
     }
     private void autoShutter(int delay){
         if (countdown != null)
             countdown.cancel();
-        countdown = new CountDownTimer(delay*1000, 100) {
+        countdown = new CountDownTimer(delay, 100) {
             @SuppressLint("SetTextI18n")
             @Override
             public void onTick(long millisUntilFinished) {
@@ -141,15 +139,15 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
     private void capture (){
         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
         imageFile = new File(dir, timeStamp + ".jpg");
-        try { cameraSession.capture(captureRequest.build(), null, null);
+        try { cameraSession.capture(captureRequest.build(), null, backgroundHandler);
             } catch (CameraAccessException | IllegalStateException e) {System.err.println("Capture session can\'t build request");}
         reset();
     }
     private void reset(){
         if (timelapse)
             autoShutter(lapseDelay);
-        else
-            autoShutter(shutterDelay);
+       // else
+            //MESSAGE ABOUT MOVING PHONE TO CAPTURE NEW
     }
     private void initSensor(){
     }
@@ -163,6 +161,7 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
     }
     @Override
     public void onAccuracyChanged(Sensor sensor, int accuracy) {}
+
     private void checkPermissions(){
         final String [] permLegend = {Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE};
         final int ok = PackageManager.PERMISSION_GRANTED;
@@ -194,15 +193,15 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
         } catch (CameraAccessException e){System.err.println("Camera manager can\'t find cameras");}
     }
     private void findCamera(String[] cameras) {
-        CameraCharacteristics cameraCharacteristics;
+        CameraCharacteristics cameraCharacter;
         Integer thisCameraDirection;
         try{ for (String camID : cameras) {
-                cameraCharacteristics = cameraManager.getCameraCharacteristics(camID);
-                thisCameraDirection = cameraCharacteristics.get(CameraCharacteristics.LENS_FACING);
+                cameraCharacter = cameraManager.getCameraCharacteristics(camID);
+                thisCameraDirection = cameraCharacter.get(CameraCharacteristics.LENS_FACING);
                 if (thisCameraDirection != null && thisCameraDirection == setCameraDirection) {
                     cameraID = camID;
                     //noinspection ConstantConditions
-                    setOutputSizes(cameraCharacteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP).getOutputSizes(ImageFormat.JPEG));
+                    setOutputSizes(cameraCharacter.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP).getOutputSizes(ImageFormat.JPEG));
                     break;
                 }
             }
@@ -259,7 +258,7 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
             texture.setDefaultBufferSize(previewSize.getWidth(), previewSize.getHeight());
             Surface previewSurface = new Surface(texture);
             ImageReader imageReader = ImageReader.newInstance(captureSize.getWidth(), captureSize.getHeight(), ImageFormat.JPEG, 1);
-            imageReader.setOnImageAvailableListener(readerHandler, backgroundHandler);
+            imageReader.setOnImageAvailableListener(readerHandler, null);
             Surface readerSurface = imageReader.getSurface();
             outputList = Arrays.asList(previewSurface, readerSurface);
             openCamera();
@@ -275,28 +274,27 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
     private final CameraDevice.StateCallback cameraHandler = new CameraDevice.StateCallback() {
         public void onOpened(@NonNull CameraDevice camera){
             deviceCamera = camera;
-            prepareCaptureRequest();
             preparePreviewRequest();
+            prepareCaptureRequest();
+            startCameraSession();
         }
         public void onClosed(@NonNull CameraDevice camera){
-            deviceCamera.close();
             deviceCamera = null;
         }
         public void onDisconnected(@NonNull CameraDevice camera){this.onClosed(camera);}
         public void onError(@NonNull CameraDevice camera, int error){this.onClosed(camera);}
     };
-    private void prepareCaptureRequest(){
-        try { captureRequest = deviceCamera.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
-        } catch (CameraAccessException e) {System.err.println("Unable to create capture request");}
-        captureRequest.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO);
-        captureRequest.addTarget(outputList.get(1));
-    }
     private void preparePreviewRequest(){
         try { previewRequest = deviceCamera.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
         } catch (CameraAccessException e) {System.err.println("Unable to create capture request");}
         previewRequest.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO);
         previewRequest.addTarget(outputList.get(0));
-        startCameraSession();
+    }
+    private void prepareCaptureRequest(){
+        try { captureRequest = deviceCamera.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
+        } catch (CameraAccessException e) {System.err.println("Unable to create capture request");}
+        captureRequest.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO);
+        captureRequest.addTarget(outputList.get(1));
     }
     private void startCameraSession(){
         try { deviceCamera.createCaptureSession(outputList, cameraSessionHandler, backgroundHandler);
@@ -316,23 +314,21 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
         public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
             prepareOutputSurfaces();}
         public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) {}
-        public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {previewTexture = null;return false;}
+        public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {previewTexture = null;return true;}
         public void onSurfaceTextureUpdated(SurfaceTexture surface) {}
     };
     private final ImageReader.OnImageAvailableListener readerHandler = new ImageReader.OnImageAvailableListener() {
         @Override
         public void onImageAvailable(ImageReader reader) {
             Image image = null;
-            try { image = reader.acquireLatestImage();
+            try { image = reader.acquireNextImage();
                 ByteBuffer buffer = image.getPlanes()[0].getBuffer();
                 byte[] bytes = new byte[buffer.capacity()];
                 buffer.get(bytes);
                 save(bytes);
+                image.close();
             } catch (IOException e) {
                 System.err.println("Image file could not be buffered/saved");
-            } finally {
-                if (image != null)
-                    image.close();
             }
         }
         private void save(byte[] bytes) throws IOException {
@@ -340,10 +336,9 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
             try {
                 output = new FileOutputStream(imageFile);
                 output.write(bytes);
-            } finally {
-                if (null != output)
-                    output.close();
-            }
+                output.close();
+            } catch (IOException e) {
+                System.err.println("Image file could not be buffered/saved");}
         }
     };
     public void onClickPause(View view){
