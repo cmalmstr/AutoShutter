@@ -46,7 +46,7 @@
         android:id="@+id/pauseButton"
         android:layout_width="48dp"
         android:layout_height="48dp"
-        android:layout_marginBottom="8dp"
+        android:layout_marginBottom="0dp"
         android:adjustViewBounds="false"
         android:background="@android:color/transparent"
         android:clickable="true"
@@ -57,12 +57,18 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
-        app:srcCompat="@drawable/ic_pause_circle_outline_white_24px" />
+        app:srcCompat="@drawable/ic_pause_circle_outline_white_24px"
+        app:layout_constraintHorizontal_bias="1.0"
+        app:layout_constraintTop_toTopOf="@+id/viewfinderView"
+        android:layout_marginTop="0dp"
+        android:layout_marginRight="8dp" />
 
     <ImageButton
         android:id="@+id/playButton"
         android:layout_width="48dp"
         android:layout_height="48dp"
+        android:layout_marginBottom="0dp"
+        android:layout_marginTop="0dp"
         android:adjustViewBounds="false"
         android:background="@android:color/transparent"
         android:clickable="true"
@@ -72,10 +78,12 @@
         android:onClick="onClickPlay"
         android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintHorizontal_bias="1.0"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
         app:srcCompat="@drawable/ic_play_circle_outline_black_24dp"
-        android:layout_marginBottom="8dp" />
+        android:layout_marginRight="8dp" />
 
     <TextureView
         android:id="@+id/viewfinderView"
@@ -90,14 +98,13 @@
 
     <TextView
         android:id="@+id/shutterText"
-        android:layout_width="match_parent"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginBottom="16dp"
         android:layout_marginEnd="32dp"
         android:layout_marginLeft="32dp"
         android:layout_marginRight="32dp"
         android:layout_marginStart="32dp"
-        android:layout_marginTop="0dp"
         android:layout_weight="1"
         android:text="@string/hold_still_txt"
         android:textAlignment="center"
@@ -111,7 +118,7 @@
 
     <TextView
         android:id="@+id/shutterText2"
-        android:layout_width="match_parent"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginBottom="32dp"
         android:layout_marginEnd="32dp"

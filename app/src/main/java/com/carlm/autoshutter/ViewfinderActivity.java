@@ -155,7 +155,7 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
     @Override
     public void onSensorChanged(SensorEvent event){
         for (int i=0;i<referenceAcceleration.length;i++){
-            if(abs(event.values[i]-referenceAcceleration[i]) > shakeTolerance) {
+            if(!paused && abs(event.values[i]-referenceAcceleration[i]) > shakeTolerance) {
                 feedback.setText(R.string.hold_still_txt);
                 autoShutter(shutterDelay);
             }
