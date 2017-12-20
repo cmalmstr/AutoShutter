@@ -7,6 +7,8 @@
     <string name="pause_txt">Paused</string>
     <string name="hold_still_txt">Hold still to capture photo</string>
     <string name="capture_txt">Photo captured</string>
+    <string name="lapse_count_txt">&#160; photos captured &#40;</string>
+    <string name="lapse_count_txt2">s &#64; 24fps&#41;</string>
     <string name="lapse_capture_txt">Hold still to keep capturing timelapse photos</string>
     <string name="final_capture_txt">Move the phone to take another photo, or enable timelapse capture in the settings for multiple captures of the same subject.</string>
     <string name="permission_button">Set permissions</string>

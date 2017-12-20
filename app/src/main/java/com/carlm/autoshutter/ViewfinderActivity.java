@@ -26,6 +26,7 @@ import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
+import android.util.SparseIntArray;
 import android.view.Surface;
 import android.view.TextureView;
 import android.view.View;
@@ -58,6 +59,7 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
     private int setCameraDirection;
     private int shutterDelay;
     private int lapseDelay;
+    private int lapsePhotos;
     private boolean timelapse;
     private boolean paused;
     private SensorManager sensorManager;
@@ -72,9 +74,18 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
     private File imageFile;
     private TextView feedback;
     private TextView feedback2;
+    private TextView feedbackLapse;
     private CountDownTimer countdown;
     private Handler backgroundHandler;
     private HandlerThread backgroundThread;
+    private static final SparseIntArray ORIENTATIONS = new SparseIntArray();
+    static {
+        ORIENTATIONS.append(Surface.ROTATION_0, 90);
+        ORIENTATIONS.append(Surface.ROTATION_90, 0);
+        ORIENTATIONS.append(Surface.ROTATION_180, 270);
+        ORIENTATIONS.append(Surface.ROTATION_270, 180);
+    }
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -90,6 +101,7 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
         setContentView(R.layout.activity_viewfinder);
         feedback = findViewById(R.id.shutterText);
         feedback2 = findViewById(R.id.shutterText2);
+        feedbackLapse = findViewById(R.id.lapseText);
         previewTexture = findViewById(R.id.viewfinderView);
     }
     @Override
@@ -106,7 +118,9 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
         shutterDelay = Integer.parseInt(sharedPref.getString("delay",null));
         lapseDelay = Integer.parseInt(sharedPref.getString("frequency",null));
         timelapse = sharedPref.getBoolean("timelapse",false);
+        lapsePhotos = 0;
         feedback.setText(R.string.hold_still_txt);
+        feedbackLapse.setText("");
         autoShutter(shutterDelay);
     }
     @Override
@@ -148,6 +162,8 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
             } catch (CameraAccessException | IllegalStateException | NullPointerException e) {System.err.println("Capture session can\'t build request");}
         if (timelapse){
             feedback.setText(R.string.lapse_capture_txt);
+            lapsePhotos++;
+            feedbackLapse.setText(Integer.toString(lapsePhotos) + getString(R.string.lapse_count_txt) + Integer.toString(lapsePhotos/24) + getString(R.string.lapse_count_txt2));
             autoShutter(lapseDelay);}
         else
             feedback2.setText(R.string.final_capture_txt);
@@ -157,6 +173,8 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
         for (int i=0;i<referenceAcceleration.length;i++){
             if(!paused && abs(event.values[i]-referenceAcceleration[i]) > shakeTolerance) {
                 feedback.setText(R.string.hold_still_txt);
+                feedbackLapse.setText("");
+                lapsePhotos = 0;
                 autoShutter(shutterDelay);
             }
             referenceAcceleration[i] = event.values[i];
@@ -203,6 +221,7 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
         try{ for (String camID : cameras) {
                 cameraCharacter = cameraManager.getCameraCharacteristics(camID);
                 thisCameraDirection = cameraCharacter.get(CameraCharacteristics.LENS_FACING);
+
                 if (thisCameraDirection != null && thisCameraDirection == setCameraDirection) {
                     cameraID = camID;
                     //noinspection ConstantConditions
@@ -299,12 +318,16 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
         try { previewRequest = deviceCamera.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
         } catch (CameraAccessException e) {System.err.println("Unable to create capture request");}
         previewRequest.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO);
+        int rotation = getWindowManager().getDefaultDisplay().getRotation();
+        previewRequest.set(CaptureRequest.JPEG_ORIENTATION, ORIENTATIONS.get(rotation));
         previewRequest.addTarget(outputList.get(0));
     }
     private void prepareCaptureRequest(){
         try { captureRequest = deviceCamera.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
         } catch (CameraAccessException e) {System.err.println("Unable to create capture request");}
         captureRequest.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO);
+        int rotation = getWindowManager().getDefaultDisplay().getRotation();
+        captureRequest.set(CaptureRequest.JPEG_ORIENTATION, ORIENTATIONS.get(rotation));
         captureRequest.addTarget(outputList.get(1));
     }
     private void startCameraSession(){
@@ -353,6 +376,8 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
         countdown.cancel();
         feedback.setText(R.string.pause_txt);
         feedback2.setText("");
+        feedbackLapse.setText("");
+        lapsePhotos = 0;
         view.setVisibility(View.GONE);
         findViewById(R.id.playButton).setVisibility(View.VISIBLE);
     }
