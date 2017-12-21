@@ -73,6 +73,7 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
     private TextView feedback2;
     private TextView feedbackLapse;
     private int setCameraDirection;
+    private int sensorOrientation;
     private float shakeTolerance;
     private int shutterDelay;
     private int lapseDelay;
@@ -210,9 +211,10 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
         try{ for (String camID : cameras) {
                 cameraCharacter = cameraManager.getCameraCharacteristics(camID);
             if (cameraCharacter.get(CameraCharacteristics.LENS_FACING) == setCameraDirection) {
-                    cameraID = camID;
-                    setOutputSizes(cameraCharacter.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP).getOutputSizes(ImageFormat.JPEG));
-                    break;
+                cameraID = camID;
+                sensorOrientation = cameraCharacter.get(CameraCharacteristics.SENSOR_ORIENTATION);
+                setOutputSizes(cameraCharacter.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP).getOutputSizes(ImageFormat.JPEG));
+                break;
                 }
             }
         } catch (CameraAccessException | NullPointerException e) {System.err.println("Can\'t read camera characteristics or find output sizes");}
@@ -305,7 +307,11 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
         try { captureRequest = deviceCamera.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
         } catch (CameraAccessException e) {System.err.println("Unable to create capture request");}
         captureRequest.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO);
-        int rotation = getWindowManager().getDefaultDisplay().getRotation();
+        int deviceOrientation = getWindowManager().getDefaultDisplay().getRotation();
+        deviceOrientation = (deviceOrientation + 45) / 90 * 90;
+        if(setCameraDirection == CameraCharacteristics.LENS_FACING_FRONT)
+            deviceOrientation = -deviceOrientation;
+        int rotation = (sensorOrientation + deviceOrientation + 360) % 360;
         captureRequest.set(CaptureRequest.JPEG_ORIENTATION, ORIENTATIONS.get(rotation));
         captureRequest.addTarget(outputList.get(1));
     }
