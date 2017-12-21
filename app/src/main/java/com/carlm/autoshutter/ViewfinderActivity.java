@@ -45,7 +45,6 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
-
 import static java.lang.Math.abs;
 
 public class ViewfinderActivity extends AppCompatActivity implements SensorEventListener {
@@ -56,36 +55,30 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
     private CameraCaptureSession cameraSession;
     private CaptureRequest.Builder previewRequest;
     private CaptureRequest.Builder captureRequest;
+    private TextureView previewTexture;
+    private ImageReader imageReader;
+    private List<Surface> outputList;
+    private File dir;
+    private CountDownTimer countdown;
+    private SensorManager sensorManager;
+    private float[] referenceAcceleration;
+    private Handler backgroundHandler;
+    private HandlerThread backgroundThread;
+    private static final SparseIntArray ORIENTATIONS = new SparseIntArray();
+    static {ORIENTATIONS.append(Surface.ROTATION_0, 90);
+            ORIENTATIONS.append(Surface.ROTATION_90, 0);
+            ORIENTATIONS.append(Surface.ROTATION_180, 270);
+            ORIENTATIONS.append(Surface.ROTATION_270, 180);}
+    private TextView feedback;
+    private TextView feedback2;
+    private TextView feedbackLapse;
     private int setCameraDirection;
+    private float shakeTolerance;
     private int shutterDelay;
     private int lapseDelay;
     private int lapsePhotos;
     private boolean timelapse;
     private boolean paused;
-    private SensorManager sensorManager;
-    private float[] referenceAcceleration;
-    private float shakeTolerance;
-    private TextureView previewTexture;
-    private ImageReader imageReader;
-    private List<Surface> outputList;
-    private Size previewSize;
-    private Size captureSize;
-    private File dir;
-    private File imageFile;
-    private TextView feedback;
-    private TextView feedback2;
-    private TextView feedbackLapse;
-    private CountDownTimer countdown;
-    private Handler backgroundHandler;
-    private HandlerThread backgroundThread;
-    private static final SparseIntArray ORIENTATIONS = new SparseIntArray();
-    static {
-        ORIENTATIONS.append(Surface.ROTATION_0, 90);
-        ORIENTATIONS.append(Surface.ROTATION_90, 0);
-        ORIENTATIONS.append(Surface.ROTATION_180, 270);
-        ORIENTATIONS.append(Surface.ROTATION_270, 180);
-    }
-
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -94,19 +87,22 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
         sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
         dir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM) + "/autoshutter");
         sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
-        setCameraDirection = CameraCharacteristics.LENS_FACING_BACK;
         referenceAcceleration = new float[]{0,0,0};
         shakeTolerance = 1;
-        paused = false;
+        setCameraDirection = CameraCharacteristics.LENS_FACING_BACK;
         setContentView(R.layout.activity_viewfinder);
         feedback = findViewById(R.id.shutterText);
         feedback2 = findViewById(R.id.shutterText2);
         feedbackLapse = findViewById(R.id.lapseText);
         previewTexture = findViewById(R.id.viewfinderView);
+        paused = false;
     }
     @Override
     protected void onStart(){
         super.onStart();
+        shutterDelay = Integer.parseInt(sharedPref.getString("delay",null));
+        lapseDelay = Integer.parseInt(sharedPref.getString("frequency",null));
+        timelapse = sharedPref.getBoolean("timelapse",false);
         startBackgroundThread();
         checkPermissions();
     }
@@ -115,13 +111,12 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
         super.onResume();
         sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER),
                 1000000, 2000000, null);
-        shutterDelay = Integer.parseInt(sharedPref.getString("delay",null));
-        lapseDelay = Integer.parseInt(sharedPref.getString("frequency",null));
-        timelapse = sharedPref.getBoolean("timelapse",false);
         lapsePhotos = 0;
-        feedback.setText(R.string.hold_still_txt);
-        feedbackLapse.setText("");
-        autoShutter(shutterDelay);
+        if(!paused) {
+            feedback.setText(R.string.hold_still_txt);
+            feedbackLapse.setText("");
+            autoShutter(shutterDelay);
+        }
     }
     @Override
     protected void onPause(){
@@ -156,8 +151,6 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
         }.start();
     }
     private void capture (){
-        @SuppressLint("SimpleDateFormat") String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmssSSS").format(new Date());
-        imageFile = new File(dir, timeStamp + ".jpg");
         try { cameraSession.capture(captureRequest.build(), null, backgroundHandler);
             } catch (CameraAccessException | IllegalStateException | NullPointerException e) {System.err.println("Capture session can\'t build request");}
         if (timelapse){
@@ -171,12 +164,8 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
     @Override
     public void onSensorChanged(SensorEvent event){
         for (int i=0;i<referenceAcceleration.length;i++){
-            if(!paused && abs(event.values[i]-referenceAcceleration[i]) > shakeTolerance) {
-                feedback.setText(R.string.hold_still_txt);
-                feedbackLapse.setText("");
-                lapsePhotos = 0;
-                autoShutter(shutterDelay);
-            }
+            if(!paused && abs(event.values[i]-referenceAcceleration[i]) > shakeTolerance)
+                onResume();
             referenceAcceleration[i] = event.values[i];
         }
     }
@@ -204,33 +193,29 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
         startActivity(new Intent(ViewfinderActivity.this, PermissionActivity.class));
     }
     private void initManager(){
-        if (dir.exists() || dir.mkdir()) {
+        if ((dir.exists() || dir.mkdir()) && previewTexture.isAvailable()) {
             if (cameraManager == null)
                 cameraManager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
             try {
                 String[] cameras = cameraManager.getCameraIdList();
                 findCamera(cameras);
-            } catch (CameraAccessException e) {
-                System.err.println("Camera manager can\'t find cameras");
-            }
+            } catch (CameraAccessException e) { System.err.println("Camera manager can\'t find cameras");}
         }
+        else
+            previewTexture.setSurfaceTextureListener(viewHandler);
     }
+    @SuppressWarnings("ConstantConditions")
     private void findCamera(String[] cameras) {
         CameraCharacteristics cameraCharacter;
-        Integer thisCameraDirection;
         try{ for (String camID : cameras) {
                 cameraCharacter = cameraManager.getCameraCharacteristics(camID);
-                thisCameraDirection = cameraCharacter.get(CameraCharacteristics.LENS_FACING);
-
-                if (thisCameraDirection != null && thisCameraDirection == setCameraDirection) {
+            if (cameraCharacter.get(CameraCharacteristics.LENS_FACING) == setCameraDirection) {
                     cameraID = camID;
-                    //noinspection ConstantConditions
                     setOutputSizes(cameraCharacter.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP).getOutputSizes(ImageFormat.JPEG));
                     break;
                 }
             }
-        } catch (CameraAccessException | NullPointerException e) {
-            System.err.println("Can\'t read camera characteristics or find output sizes");}
+        } catch (CameraAccessException | NullPointerException e) {System.err.println("Can\'t read camera characteristics or find output sizes");}
     }
     private void setOutputSizes(Size[] jpgSizes){
         int previewWidth = Resources.getSystem().getDisplayMetrics().widthPixels;
@@ -266,47 +251,39 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
                     thisWidth >= captureWidth && thisHeight >= captureHeight)
                 bigEnoughCapture.add(option);
         }
+        Size previewSize = new Size(jpgSizes[0].getWidth(), jpgSizes[0].getHeight());
+        Size captureSize = new Size(jpgSizes[0].getWidth(), jpgSizes[0].getHeight());
         if (bigEnoughPreview.size() > 0) {
             Size size = Collections.min(bigEnoughPreview, new CompareSizesByArea());
             previewSize = new Size(size.getWidth(), size.getHeight());
-        } else {
-            previewSize = new Size(jpgSizes[0].getWidth(), jpgSizes[0].getHeight());
         }
         if (bigEnoughCapture.size() > 0) {
-            Size size = Collections.min(bigEnoughCapture, new CompareSizesByArea());
-            if (max)
+            Size size;
+           if (max)
                 size = Collections.max(bigEnoughCapture, new CompareSizesByArea());
+            else
+                size = Collections.min(bigEnoughCapture, new CompareSizesByArea());
             captureSize = new Size(size.getWidth(), size.getHeight());
-        } else {
-            captureSize = new Size(jpgSizes[0].getWidth(), jpgSizes[0].getHeight());
         }
-        prepareOutputSurfaces();
+        prepareOutputSurfaces(previewSize, captureSize);
     }
-    private void prepareOutputSurfaces() {
-        if (previewTexture.isAvailable()){
-            SurfaceTexture texture = previewTexture.getSurfaceTexture();
-            texture.setDefaultBufferSize(previewSize.getWidth(), previewSize.getHeight());
-            Surface previewSurface = new Surface(texture);
-            imageReader = ImageReader.newInstance(captureSize.getWidth(), captureSize.getHeight(), ImageFormat.JPEG, 1);
-            imageReader.setOnImageAvailableListener(readerHandler, null);
-            Surface readerSurface = imageReader.getSurface();
-            outputList = Arrays.asList(previewSurface, readerSurface);
-            openCamera();
-        } else
-            previewTexture.setSurfaceTextureListener(viewHandler);
+    private void prepareOutputSurfaces(Size previewSize, Size captureSize) {
+        SurfaceTexture texture = previewTexture.getSurfaceTexture();
+        texture.setDefaultBufferSize(previewSize.getWidth(), previewSize.getHeight());
+        imageReader = ImageReader.newInstance(captureSize.getWidth(), captureSize.getHeight(), ImageFormat.JPEG, 1);
+        imageReader.setOnImageAvailableListener(readerHandler, null);
+        outputList = Arrays.asList(new Surface(texture), imageReader.getSurface());
+        openCamera();
     }
     private void openCamera(){
         try { cameraManager.openCamera(cameraID, cameraHandler, backgroundHandler);
-        } catch (SecurityException | CameraAccessException e){
-            System.err.println("Camera manager can\'t open camera");
-        }
+        } catch (SecurityException | CameraAccessException e){ System.err.println("Camera manager can\'t open camera");}
     }
     private final CameraDevice.StateCallback cameraHandler = new CameraDevice.StateCallback() {
         public void onOpened(@NonNull CameraDevice camera){
             deviceCamera = camera;
-            preparePreviewRequest();
+            buildPreview();
             prepareCaptureRequest();
-            startCameraSession();
         }
         public void onClosed(@NonNull CameraDevice camera){
             deviceCamera = null;
@@ -314,13 +291,15 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
         public void onDisconnected(@NonNull CameraDevice camera){this.onClosed(camera);}
         public void onError(@NonNull CameraDevice camera, int error){this.onClosed(camera);}
     };
-    private void preparePreviewRequest(){
+    private void buildPreview(){
         try { previewRequest = deviceCamera.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
         } catch (CameraAccessException e) {System.err.println("Unable to create capture request");}
         previewRequest.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO);
         int rotation = getWindowManager().getDefaultDisplay().getRotation();
         previewRequest.set(CaptureRequest.JPEG_ORIENTATION, ORIENTATIONS.get(rotation));
         previewRequest.addTarget(outputList.get(0));
+        try { deviceCamera.createCaptureSession(outputList, cameraSessionHandler, backgroundHandler);
+        } catch (CameraAccessException e) {System.err.println("Unable to start preview session");}
     }
     private void prepareCaptureRequest(){
         try { captureRequest = deviceCamera.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
@@ -330,42 +309,36 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
         captureRequest.set(CaptureRequest.JPEG_ORIENTATION, ORIENTATIONS.get(rotation));
         captureRequest.addTarget(outputList.get(1));
     }
-    private void startCameraSession(){
-        try { deviceCamera.createCaptureSession(outputList, cameraSessionHandler, backgroundHandler);
-        } catch (CameraAccessException e) {System.err.println("Unable to start preview session");}
-    }
     private final CameraCaptureSession.StateCallback cameraSessionHandler = new CameraCaptureSession.StateCallback() {
         public void onConfigured(@NonNull CameraCaptureSession session){
             cameraSession = session;
             try { session.setRepeatingRequest(previewRequest.build(), null, backgroundHandler);
             } catch (CameraAccessException e){System.err.println("Preview session can\'t build request");}
         }
-        public void onConfigureFailed(@NonNull CameraCaptureSession session) {
-            initManager();}
+        public void onConfigureFailed(@NonNull CameraCaptureSession session) {initManager();}
         public void onClosed(@NonNull CameraCaptureSession session){cameraSession = null;}
     };
     private final TextureView.SurfaceTextureListener viewHandler = new TextureView.SurfaceTextureListener(){
-        public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
-            prepareOutputSurfaces();}
+        public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {initManager();}
         public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) {}
-        public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {previewTexture = null;return true;}
+        public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {previewTexture = null;return false;}
         public void onSurfaceTextureUpdated(SurfaceTexture surface) {}
     };
     private final ImageReader.OnImageAvailableListener readerHandler = new ImageReader.OnImageAvailableListener() {
         @Override
         public void onImageAvailable(ImageReader reader) {
-            try { Image image = imageReader.acquireNextImage();
+            try { Image image = imageReader.acquireLatestImage();
                 ByteBuffer buffer = image.getPlanes()[0].getBuffer();
                 byte[] bytes = new byte[buffer.capacity()];
                 buffer.get(bytes);
                 save(bytes);
                 image.close();
-            } catch (IOException e) {
-                System.err.println("Image file could not be buffered/saved");
-            }
+            } catch (IOException e) { System.err.println("Image file could not be buffered/saved"); }
         }
         private void save(byte[] bytes) throws IOException {
-            OutputStream output = new FileOutputStream(imageFile);
+            @SuppressLint("SimpleDateFormat")
+            String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmssSSS").format(new Date());
+            OutputStream output = new FileOutputStream(new File(dir, timeStamp + ".jpg"));
             output.write(bytes);
             output.close();
         }
@@ -377,16 +350,14 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
         feedback.setText(R.string.pause_txt);
         feedback2.setText("");
         feedbackLapse.setText("");
-        lapsePhotos = 0;
         view.setVisibility(View.GONE);
         findViewById(R.id.playButton).setVisibility(View.VISIBLE);
     }
     public void onClickPlay(View view){
         paused = false;
-        feedback.setText(R.string.hold_still_txt);
-        autoShutter(shutterDelay);
         view.setVisibility(View.GONE);
         findViewById(R.id.pauseButton).setVisibility(View.VISIBLE);
+        onResume();
     }
     @SuppressWarnings("UnusedParameters")
     public void onClickSwap(View view){
@@ -395,9 +366,12 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
         else
             setCameraDirection = CameraCharacteristics.LENS_FACING_BACK;
         onPause();
-        deviceCamera.close();
+        try { cameraSession.stopRepeating();
+            cameraSession.close();
+            deviceCamera.close();
+        } catch (CameraAccessException | IllegalStateException | NullPointerException e) {System.err.println("Session already closed");}
+
         initManager();
-        onResume();
         if (paused)
             onClickPause(findViewById(R.id.pauseButton));
     }
