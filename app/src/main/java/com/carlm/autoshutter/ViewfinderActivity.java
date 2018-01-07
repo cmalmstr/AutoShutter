@@ -104,6 +104,7 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
         shutterDelay = Integer.parseInt(sharedPref.getString("delay",null));
         lapseDelay = Integer.parseInt(sharedPref.getString("frequency",null));
         timelapse = sharedPref.getBoolean("timelapse",false);
+        shakeTolerance = Float.parseFloat(sharedPref.getString("shake", "10"))/10;
         startBackgroundThread();
         checkPermissions();
     }
@@ -151,6 +152,7 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
             }
         }.start();
     }
+    @SuppressLint("SetTextI18n")
     private void capture (){
         try { cameraSession.capture(captureRequest.build(), null, backgroundHandler);
             } catch (CameraAccessException | IllegalStateException | NullPointerException e) {System.err.println("Capture session can\'t build request");}
@@ -197,10 +199,14 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
         if ((dir.exists() || dir.mkdir()) && previewTexture.isAvailable()) {
             if (cameraManager == null)
                 cameraManager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
-            try {
-                String[] cameras = cameraManager.getCameraIdList();
-                findCamera(cameras);
-            } catch (CameraAccessException e) { System.err.println("Camera manager can\'t find cameras");}
+            else {
+                try {
+                    String[] cameras = cameraManager.getCameraIdList();
+                    findCamera(cameras);
+                } catch (CameraAccessException | NullPointerException e) {
+                    System.err.println("Camera manager can\'t find cameras");
+                }
+            }
         }
         else
             previewTexture.setSurfaceTextureListener(viewHandler);
@@ -376,8 +382,8 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
             cameraSession.close();
             deviceCamera.close();
         } catch (CameraAccessException | IllegalStateException | NullPointerException e) {System.err.println("Session already closed");}
-
         initManager();
+        onResume();
         if (paused)
             onClickPause(findViewById(R.id.pauseButton));
     }

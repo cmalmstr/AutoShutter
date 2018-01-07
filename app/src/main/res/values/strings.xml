@@ -1,6 +1,7 @@
 <resources>
     <string name="app_name">Auto Shutter</string>
     <string name="alt_settings">Go to Settings</string>
+    <string name="alt_instruction">Phone shaking</string>
     <string name="alt_swap">Switch between front and back camera</string>
     <string name="alt_pause">Pause auto capture</string>
     <string name="alt_play">Resume auto capture</string>
@@ -28,6 +29,20 @@
         <item>hd</item>
         <item>fhd</item>
         <item>max</item>
+    </string-array>
+    <string name="pref_shake_title">Camera shake tolerance</string>
+    <string name="pref_shake_def">10</string>
+    <string-array name="pref_shake_titles">
+        <item>Low</item>
+        <item>Medium</item>
+        <item>High</item>
+        <item>Off</item>
+    </string-array>
+    <string-array name="pref_shake_values">
+        <item>5</item>
+        <item>10</item>
+        <item>20</item>
+        <item>1000</item>
     </string-array>
     <string name="pref_init_title">Initial delay</string>
     <string name="pref_init_def">5000</string>

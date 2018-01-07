@@ -8,6 +8,14 @@
         android:positiveButtonText="@null"
         android:title="@string/pref_res_title" />
     <ListPreference
+        android:defaultValue="@string/pref_shake_def"
+        android:entries="@array/pref_shake_titles"
+        android:entryValues="@array/pref_shake_values"
+        android:key="shake"
+        android:negativeButtonText="@null"
+        android:positiveButtonText="@null"
+        android:title="@string/pref_shake_title" />
+    <ListPreference
         android:defaultValue="@string/pref_init_def"
         android:entries="@array/pref_init_titles"
         android:entryValues="@array/pref_init_values"
