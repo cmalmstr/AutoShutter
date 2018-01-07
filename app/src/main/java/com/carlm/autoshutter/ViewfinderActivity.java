@@ -30,6 +30,7 @@ import android.util.SparseIntArray;
 import android.view.Surface;
 import android.view.TextureView;
 import android.view.View;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.util.Size;
 
@@ -60,6 +61,7 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
     private List<Surface> outputList;
     private File dir;
     private CountDownTimer countdown;
+    private CountDownTimer delayTimer;
     private SensorManager sensorManager;
     private float[] referenceAcceleration;
     private Handler backgroundHandler;
@@ -72,6 +74,8 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
     private TextView feedback;
     private TextView feedback2;
     private TextView feedbackLapse;
+    private ImageView shakeIcon;
+    private ImageView stillIcon;
     private int setCameraDirection;
     private int sensorOrientation;
     private float shakeTolerance;
@@ -96,6 +100,8 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
         feedback2 = findViewById(R.id.shutterText2);
         feedbackLapse = findViewById(R.id.lapseText);
         previewTexture = findViewById(R.id.viewfinderView);
+        shakeIcon = findViewById(R.id.shakeIcon);
+        stillIcon = findViewById(R.id.stillIcon);
         paused = false;
     }
     @Override
@@ -115,9 +121,17 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
                 1000000, 2000000, null);
         lapsePhotos = 0;
         if(!paused) {
+            stillIcon.setVisibility(View.GONE);
+            shakeIcon.setVisibility(View.VISIBLE);
             feedback.setText(R.string.hold_still_txt);
+            feedback2.setText("");
             feedbackLapse.setText("");
-            autoShutter(shutterDelay);
+            delayTimer = new CountDownTimer(500,100){
+                public void onTick(long millisUntilFinished){}
+                public void onFinish(){
+                    autoShutter(shutterDelay);
+                }
+            }.start();
         }
     }
     @Override
@@ -126,6 +140,8 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
         sensorManager.unregisterListener(this);
         if (countdown != null)
             countdown.cancel();
+        if (delayTimer != null)
+            delayTimer.cancel();
     }
     @Override
     protected void onStop(){
@@ -137,6 +153,8 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
         stopBackgroundThread();
     }
     private void autoShutter(int delay){
+        shakeIcon.setVisibility(View.GONE);
+        stillIcon.setVisibility(View.VISIBLE);
         if (countdown != null)
             countdown.cancel();
         countdown = new CountDownTimer(delay, 100) {
@@ -167,8 +185,10 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
     @Override
     public void onSensorChanged(SensorEvent event){
         for (int i=0;i<referenceAcceleration.length;i++){
-            if(!paused && abs(event.values[i]-referenceAcceleration[i]) > shakeTolerance)
+            if(!paused && abs(event.values[i]-referenceAcceleration[i]) > shakeTolerance) {
+                onPause();
                 onResume();
+            }
             referenceAcceleration[i] = event.values[i];
         }
     }
@@ -359,6 +379,10 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
     public void onClickPause(View view){
         paused = true;
         countdown.cancel();
+        if (delayTimer != null)
+            delayTimer.cancel();
+        stillIcon.setVisibility(View.GONE);
+        shakeIcon.setVisibility(View.GONE);
         feedback.setText(R.string.pause_txt);
         feedback2.setText("");
         feedbackLapse.setText("");
