@@ -69,7 +69,7 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
     private float[] referenceAcceleration;
     private Handler backgroundHandler;
     private HandlerThread backgroundThread;
-        private TextView feedback;
+    private TextView feedback;
     private TextView feedback2;
     private TextView feedbackLapse;
     private ImageView shakeIcon;
@@ -111,7 +111,6 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
         previewTexture = findViewById(R.id.viewfinderView);
         shakeIcon = findViewById(R.id.shakeIcon);
         stillIcon = findViewById(R.id.stillIcon);
-        paused = false;
     }
     @Override
     protected void onStart(){
@@ -120,6 +119,7 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
         lapseDelay = Integer.parseInt(sharedPref.getString("frequency",null));
         timelapse = sharedPref.getBoolean("timelapse",false);
         shakeTolerance = Float.parseFloat(sharedPref.getString("shake", "10"))/10;
+        paused = false;
         startBackgroundThread();
         checkPermissions();
     }
@@ -128,38 +128,47 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
         super.onResume();
         sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER),
                 1000000, 2000000, null);
-        lapsePhotos = 0;
-        if(!paused) {
-            stillIcon.setVisibility(View.GONE);
-            shakeIcon.setVisibility(View.VISIBLE);
-            feedback.setText(R.string.hold_still_txt);
-            feedback2.setText("");
-            feedbackLapse.setText("");
-            delayTimer = new CountDownTimer(500,100){
-                public void onTick(long millisUntilFinished){}
-                public void onFinish(){
-                    autoShutter(shutterDelay);
-                }
-            }.start();
-        }
+        if (!paused)
+            initShutter();
     }
     @Override
     protected void onPause(){
         super.onPause();
+        interrupt();
         sensorManager.unregisterListener(this);
+    }
+    @Override
+    protected void onStop(){
+        super.onStop();
+        stopCamera();
+        stopBackgroundThread();
+    }
+    private void stopCamera(){
+        try { cameraSession.stopRepeating();
+            cameraSession.close();
+            deviceCamera.close();
+            cameraManager = null;
+        } catch (CameraAccessException | IllegalStateException | NullPointerException e) {System.err.println("Session already closed");}
+    }
+    private void interrupt(){
         if (countdown != null)
             countdown.cancel();
         if (delayTimer != null)
             delayTimer.cancel();
     }
-    @Override
-    protected void onStop(){
-        super.onStop();
-        try { cameraSession.stopRepeating();
-            cameraSession.close();
-            deviceCamera.close();
-        } catch (CameraAccessException | IllegalStateException | NullPointerException e) {System.err.println("Session already closed");}
-        stopBackgroundThread();
+    private void initShutter(){
+        lapsePhotos = 0;
+        stillIcon.setVisibility(View.GONE);
+        shakeIcon.setVisibility(View.VISIBLE);
+        feedback.setText(R.string.hold_still_txt);
+        feedback2.setText("");
+        feedbackLapse.setText("");
+        delayTimer = new CountDownTimer(500,100){
+            public void onTick(long millisUntilFinished){}
+            public void onFinish(){
+                    autoShutter(shutterDelay);
+                }
+        }.start();
     }
     private void autoShutter(int delay){
         shakeIcon.setVisibility(View.GONE);
@@ -195,8 +204,8 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
     public void onSensorChanged(SensorEvent event){
         for (int i=0;i<referenceAcceleration.length;i++){
             if(!paused && abs(event.values[i]-referenceAcceleration[i]) > shakeTolerance) {
-                onPause();
-                onResume();
+                interrupt();
+                initShutter();
             }
             referenceAcceleration[i] = event.values[i];
         }
@@ -348,8 +357,8 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
         public void onClosed(@NonNull CameraDevice camera){
             deviceCamera = null;
         }
-        public void onDisconnected(@NonNull CameraDevice camera){this.onClosed(camera);}
-        public void onError(@NonNull CameraDevice camera, int error){this.onClosed(camera);}
+        public void onDisconnected(@NonNull CameraDevice camera){System.err.println("Camera device disconnected");}
+        public void onError(@NonNull CameraDevice camera, int error){System.err.println("Camera device error");}
     };
     private void buildPreview(){
         try { previewRequest = deviceCamera.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
@@ -408,10 +417,8 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
     };
     @SuppressWarnings("WeakerAccess")
     public void onClickPause(View view){
+        interrupt();
         paused = true;
-        countdown.cancel();
-        if (delayTimer != null)
-            delayTimer.cancel();
         stillIcon.setVisibility(View.GONE);
         shakeIcon.setVisibility(View.GONE);
         feedback.setText(R.string.pause_txt);
@@ -424,23 +431,19 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
         paused = false;
         view.setVisibility(View.GONE);
         findViewById(R.id.pauseButton).setVisibility(View.VISIBLE);
-        onResume();
+        initShutter();
     }
     @SuppressWarnings("UnusedParameters")
     public void onClickSwap(View view){
+        interrupt();
+        stopCamera();
         if (setCameraDirection == CameraCharacteristics.LENS_FACING_BACK)
             setCameraDirection = CameraCharacteristics.LENS_FACING_FRONT;
         else
             setCameraDirection = CameraCharacteristics.LENS_FACING_BACK;
-        onPause();
-        try { cameraSession.stopRepeating();
-            cameraSession.close();
-            deviceCamera.close();
-        } catch (CameraAccessException | IllegalStateException | NullPointerException e) {System.err.println("Session already closed");}
         initManager();
-        onResume();
-        if (paused)
-            onClickPause(findViewById(R.id.pauseButton));
+        if (!paused)
+            initShutter();
     }
     @SuppressWarnings("UnusedParameters")
     public void onClickSettings(View view){

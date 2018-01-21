@@ -17,10 +17,11 @@
         android:adjustViewBounds="false"
         android:contentDescription="@string/alt_instruction"
         android:cropToPadding="false"
+        android:elevation="4dp"
         app:layout_constraintBottom_toTopOf="@+id/shutterText"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:srcCompat="@drawable/ic_shaker_1" />
+        app:srcCompat="@drawable/phone_shaking" />
 
     <ImageView
         android:id="@+id/stillIcon"
@@ -31,10 +32,11 @@
         android:adjustViewBounds="false"
         android:contentDescription="@string/alt_instruction"
         android:cropToPadding="false"
+        android:elevation="4dp"
         app:layout_constraintBottom_toTopOf="@+id/shutterText"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:srcCompat="@drawable/ic_still_1" />
+        app:srcCompat="@drawable/phone_still" />
 
     <ImageButton
         android:id="@+id/settingsButton"
