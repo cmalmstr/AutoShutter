@@ -51,7 +51,6 @@ import java.util.Date;
 import java.util.List;
 import static java.lang.Math.abs;
 
-@SuppressWarnings("ALL")
 public class ViewfinderActivity extends AppCompatActivity implements SensorEventListener {
     private SharedPreferences sharedPref;
     private String cameraID;
@@ -272,7 +271,7 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
                 break;
             case("fhd"):
                 captureWidth = FHD_WIDTH;
-                captureHeight = FHD_WIDTH;
+                captureHeight = FHD_HEIGHT;
                 break;
             case("max"):
                 max = true;
@@ -308,6 +307,7 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
             previewSize = new Size(MAX_PREVIEW_WIDTH, MAX_PREVIEW_HEIGHT);
         prepareOutputSurfaces(previewSize, captureSize);
     }
+    @SuppressWarnings("SuspiciousNameCombination")
     private void prepareOutputSurfaces(Size previewSize, Size captureSize) {
         SurfaceTexture texture = previewTexture.getSurfaceTexture();
         texture.setDefaultBufferSize(previewSize.getWidth(), previewSize.getHeight());
