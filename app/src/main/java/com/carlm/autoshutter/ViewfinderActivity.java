@@ -226,9 +226,8 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
     }
     private void initManager(){
         if ((dir.exists() || dir.mkdir()) && previewTexture.isAvailable()) {
-            if (cameraManager == null)
-                cameraManager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
-            else {
+            cameraManager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
+            if (cameraManager != null) {
                 try {
                     String[] cameras = cameraManager.getCameraIdList();
                     findCamera(cameras);
