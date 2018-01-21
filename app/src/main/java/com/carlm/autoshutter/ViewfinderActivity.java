@@ -8,12 +8,15 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.res.Resources;
 import android.graphics.ImageFormat;
+import android.graphics.Matrix;
+import android.graphics.RectF;
 import android.graphics.SurfaceTexture;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.hardware.camera2.*;
+import android.hardware.camera2.params.StreamConfigurationMap;
 import android.media.Image;
 import android.media.ImageReader;
 import android.os.CountDownTimer;
@@ -48,6 +51,7 @@ import java.util.Date;
 import java.util.List;
 import static java.lang.Math.abs;
 
+@SuppressWarnings("ALL")
 public class ViewfinderActivity extends AppCompatActivity implements SensorEventListener {
     private SharedPreferences sharedPref;
     private String cameraID;
@@ -66,12 +70,7 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
     private float[] referenceAcceleration;
     private Handler backgroundHandler;
     private HandlerThread backgroundThread;
-    private static final SparseIntArray ORIENTATIONS = new SparseIntArray();
-    static {ORIENTATIONS.append(Surface.ROTATION_0, 90);
-            ORIENTATIONS.append(Surface.ROTATION_90, 0);
-            ORIENTATIONS.append(Surface.ROTATION_180, 270);
-            ORIENTATIONS.append(Surface.ROTATION_270, 180);}
-    private TextView feedback;
+        private TextView feedback;
     private TextView feedback2;
     private TextView feedbackLapse;
     private ImageView shakeIcon;
@@ -84,6 +83,17 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
     private int lapsePhotos;
     private boolean timelapse;
     private boolean paused;
+    private static final SparseIntArray ORIENTATIONS = new SparseIntArray();
+    static {ORIENTATIONS.append(Surface.ROTATION_0, 90);
+        ORIENTATIONS.append(Surface.ROTATION_90, 0);
+        ORIENTATIONS.append(Surface.ROTATION_180, 270);
+        ORIENTATIONS.append(Surface.ROTATION_270, 180);}
+    private static final int MAX_PREVIEW_WIDTH = 1920;
+    private static final int MAX_PREVIEW_HEIGHT = 1080;
+    private static final int HD_WIDTH = 1280;
+    private static final int HD_HEIGHT = 720;
+    private static final int FHD_WIDTH = 1920;
+    private static final int FHD_HEIGHT = 1080;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -235,35 +245,36 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
     private void findCamera(String[] cameras) {
         CameraCharacteristics cameraCharacter;
         try{ for (String camID : cameras) {
-                cameraCharacter = cameraManager.getCameraCharacteristics(camID);
+            cameraCharacter = cameraManager.getCameraCharacteristics(camID);
             if (cameraCharacter.get(CameraCharacteristics.LENS_FACING) == setCameraDirection) {
                 cameraID = camID;
                 sensorOrientation = cameraCharacter.get(CameraCharacteristics.SENSOR_ORIENTATION);
-                setOutputSizes(cameraCharacter.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP).getOutputSizes(ImageFormat.JPEG));
+                StreamConfigurationMap map = cameraCharacter.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
+                if (map.getOutputSizes(ImageFormat.JPEG).length > 0)
+                    setOutputSizes(map.getOutputSizes(ImageFormat.JPEG));
+                else if (android.os.Build.VERSION.SDK_INT >= 23 && map.getHighResolutionOutputSizes(ImageFormat.JPEG).length > 0)
+                    setOutputSizes(map.getHighResolutionOutputSizes(ImageFormat.JPEG));
                 break;
                 }
             }
         } catch (CameraAccessException | NullPointerException e) {System.err.println("Can\'t read camera characteristics or find output sizes");}
     }
     private void setOutputSizes(Size[] jpgSizes){
-        int previewWidth = Resources.getSystem().getDisplayMetrics().widthPixels;
         int previewHeight = Resources.getSystem().getDisplayMetrics().heightPixels;
-        int captureWidth = previewWidth;
-        int captureHeight = previewHeight;
+        int previewWidth = previewHeight * MAX_PREVIEW_WIDTH/MAX_PREVIEW_HEIGHT;
+        int captureWidth = FHD_WIDTH;
+        int captureHeight = FHD_HEIGHT;
         boolean max = false;
         switch(sharedPref.getString("resolution","max")) {
             case ("hd"):
-                captureWidth = 1280;
-                captureHeight = 720;
+                captureWidth = HD_WIDTH;
+                captureHeight = HD_HEIGHT;
                 break;
             case("fhd"):
-                captureWidth = 1920;
-                captureHeight = 1080;
+                captureWidth = FHD_WIDTH;
+                captureHeight = FHD_WIDTH;
                 break;
             case("max"):
-                max = true;
-                break;
-            default:
                 max = true;
                 break;
         }
@@ -279,25 +290,48 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
                     thisWidth >= captureWidth && thisHeight >= captureHeight)
                 bigEnoughCapture.add(option);
         }
-        Size previewSize = new Size(jpgSizes[0].getWidth(), jpgSizes[0].getHeight());
-        Size captureSize = new Size(jpgSizes[0].getWidth(), jpgSizes[0].getHeight());
-        if (bigEnoughPreview.size() > 0) {
-            Size size = Collections.min(bigEnoughPreview, new CompareSizesByArea());
-            previewSize = new Size(size.getWidth(), size.getHeight());
-        }
+        Size previewSize;
+        Size captureSize;
         if (bigEnoughCapture.size() > 0) {
             Size size;
-           if (max)
+            if (max)
                 size = Collections.max(bigEnoughCapture, new CompareSizesByArea());
             else
                 size = Collections.min(bigEnoughCapture, new CompareSizesByArea());
             captureSize = new Size(size.getWidth(), size.getHeight());
-        }
+        } else
+            captureSize = new Size(jpgSizes[0].getWidth(), jpgSizes[0].getHeight());
+        if (bigEnoughPreview.size() > 0) {
+            Size size = Collections.min(bigEnoughPreview, new CompareSizesByArea());
+            previewSize = new Size(size.getWidth(), size.getHeight());
+        } else
+            previewSize = new Size(MAX_PREVIEW_WIDTH, MAX_PREVIEW_HEIGHT);
         prepareOutputSurfaces(previewSize, captureSize);
     }
     private void prepareOutputSurfaces(Size previewSize, Size captureSize) {
         SurfaceTexture texture = previewTexture.getSurfaceTexture();
         texture.setDefaultBufferSize(previewSize.getWidth(), previewSize.getHeight());
+        int viewWidth = Resources.getSystem().getDisplayMetrics().widthPixels;
+        int viewHeight = Resources.getSystem().getDisplayMetrics().heightPixels;
+        int previewWidth = previewSize.getWidth();
+        int previewHeight = previewSize.getHeight();
+        int deviceRotation = getWindowManager().getDefaultDisplay().getRotation();
+        Matrix rotateMatrix = new Matrix();
+        RectF viewRect = new RectF(0, 0, viewWidth, viewHeight);
+        RectF bufferRect = new RectF(0, 0, previewHeight, previewWidth);
+        float centerX = viewRect.centerX();
+        float centerY = viewRect.centerY();
+        if (Surface.ROTATION_90 == deviceRotation || Surface.ROTATION_270 == deviceRotation) {
+            bufferRect.offset(centerX - bufferRect.centerX(), centerY - bufferRect.centerY());
+            rotateMatrix.setRectToRect(viewRect, bufferRect, Matrix.ScaleToFit.FILL);
+            float scale = Math.max(
+                    (float) viewHeight / previewHeight,
+                    (float) viewWidth / previewWidth);
+            rotateMatrix.postScale(scale, scale, centerX, centerY);
+            rotateMatrix.postRotate(90 * (deviceRotation - 2), centerX, centerY);
+        } else if (Surface.ROTATION_180 == deviceRotation)
+            rotateMatrix.postRotate(180, centerX, centerY);
+        previewTexture.setTransform(rotateMatrix);
         imageReader = ImageReader.newInstance(captureSize.getWidth(), captureSize.getHeight(), ImageFormat.JPEG, 1);
         imageReader.setOnImageAvailableListener(readerHandler, null);
         outputList = Arrays.asList(new Surface(texture), imageReader.getSurface());
@@ -311,7 +345,6 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
         public void onOpened(@NonNull CameraDevice camera){
             deviceCamera = camera;
             buildPreview();
-            prepareCaptureRequest();
         }
         public void onClosed(@NonNull CameraDevice camera){
             deviceCamera = null;
@@ -321,10 +354,8 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
     };
     private void buildPreview(){
         try { previewRequest = deviceCamera.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
-        } catch (CameraAccessException e) {System.err.println("Unable to create capture request");}
+        } catch (CameraAccessException e) {System.err.println("Unable to create preview request");}
         previewRequest.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO);
-        int rotation = getWindowManager().getDefaultDisplay().getRotation();
-        previewRequest.set(CaptureRequest.JPEG_ORIENTATION, ORIENTATIONS.get(rotation));
         previewRequest.addTarget(outputList.get(0));
         try { deviceCamera.createCaptureSession(outputList, cameraSessionHandler, backgroundHandler);
         } catch (CameraAccessException e) {System.err.println("Unable to start preview session");}
@@ -345,6 +376,7 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
         public void onConfigured(@NonNull CameraCaptureSession session){
             cameraSession = session;
             try { session.setRepeatingRequest(previewRequest.build(), null, backgroundHandler);
+                prepareCaptureRequest();
             } catch (CameraAccessException e){System.err.println("Preview session can\'t build request");}
         }
         public void onConfigureFailed(@NonNull CameraCaptureSession session) {initManager();}
@@ -353,7 +385,7 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
     private final TextureView.SurfaceTextureListener viewHandler = new TextureView.SurfaceTextureListener(){
         public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {initManager();}
         public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) {}
-        public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {previewTexture = null;return false;}
+        public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {return false;}
         public void onSurfaceTextureUpdated(SurfaceTexture surface) {}
     };
     private final ImageReader.OnImageAvailableListener readerHandler = new ImageReader.OnImageAvailableListener() {
