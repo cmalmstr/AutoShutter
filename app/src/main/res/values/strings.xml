@@ -84,5 +84,57 @@
         <item>30000</item>
         <item>60000</item>
     </string-array>
+    <string name="pref_wb_title">White-balance mode</string>
+    <string name="pref_wb_def">auto</string>
+    <string-array name="pref_wb_titles">
+        <item>Auto</item>
+        <item>Daylight</item>
+        <item>Cloudy</item>
+        <item>Shade</item>
+        <item>Twilight</item>
+        <item>Incandescent</item>
+        <item>Fluorescent</item>
+    </string-array>
+    <string-array name="pref_wb_values">
+        <item>1</item>
+        <item>5</item>
+        <item>6</item>
+        <item>8</item>
+        <item>7</item>
+        <item>2</item>
+        <item>3</item>
+    </string-array>
+    <string name="pref_exp_title">Exposure compensation</string>
+    <string name="pref_exp_def">0</string>
+    <string-array name="pref_exp_titles">
+        <item>-2</item>
+        <item>-1 2/3</item>
+        <item>-1 1/3</item>
+        <item>-1</item>
+        <item>-2/3</item>
+        <item>-1/3</item>
+        <item>0</item>
+        <item>+1/3</item>
+        <item>+2/3</item>
+        <item>+1</item>
+        <item>+1 1/3</item>
+        <item>+1 2/3</item>
+        <item>+2</item>
+    </string-array>
+    <string-array name="pref_exp_values">
+        <item>-6</item>
+        <item>-5</item>
+        <item>-4</item>
+        <item>-3</item>
+        <item>-2</item>
+        <item>-1</item>
+        <item>0</item>
+        <item>1</item>
+        <item>2</item>
+        <item>3</item>
+        <item>4</item>
+        <item>5</item>
+        <item>6</item>
+    </string-array>
     <string name="pref_donate">Donate</string>
 </resources>

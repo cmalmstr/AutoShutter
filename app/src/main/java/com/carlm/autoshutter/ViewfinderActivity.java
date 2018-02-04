@@ -59,6 +59,7 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
     private CameraCaptureSession cameraSession;
     private CaptureRequest.Builder previewRequest;
     private CaptureRequest.Builder captureRequest;
+    private CaptureRequest.Builder lapseRequest;
     private TextureView previewTexture;
     private ImageReader imageReader;
     private List<Surface> outputList;
@@ -190,13 +191,26 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
     }
     @SuppressLint("SetTextI18n")
     private void capture (){
-        try { cameraSession.capture(captureRequest.build(), null, backgroundHandler);
-            } catch (CameraAccessException | IllegalStateException | NullPointerException e) {System.err.println("Capture session can\'t build request");}
-        if (timelapse){
+        if (lapsePhotos==0) {
+            try {
+                lapseRequest.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO);
+                cameraSession.capture(captureRequest.build(), null, backgroundHandler);
+                lapseRequest.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_OFF);
+            } catch (CameraAccessException | IllegalStateException | NullPointerException e) {
+                System.err.println("Capture session can\'t build request"); }
+        }
+        else {
+            try {
+                cameraSession.capture(lapseRequest.build(), null, backgroundHandler);
+            } catch (CameraAccessException | IllegalStateException | NullPointerException e) {
+                System.err.println("Capture session can\'t build request"); }
+        }
+        if (timelapse) {
             feedback.setText(R.string.lapse_capture_txt);
             lapsePhotos++;
             feedbackLapse.setText(Integer.toString(lapsePhotos) + getString(R.string.lapse_count_txt) + Integer.toString(lapsePhotos/24) + getString(R.string.lapse_count_txt2));
-            autoShutter(lapseDelay);}
+            autoShutter(lapseDelay);
+        }
         else
             feedback2.setText(R.string.final_capture_txt);
     }
@@ -370,15 +384,27 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
     }
     private void prepareCaptureRequest(){
         try { captureRequest = deviceCamera.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
-        } catch (CameraAccessException e) {System.err.println("Unable to create capture request");}
+            lapseRequest = deviceCamera.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
+        } catch (CameraAccessException e) {System.err.println("Unable to create capture requests");}
         captureRequest.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO);
+        captureRequest.set(CaptureRequest.FLASH_MODE, CameraMetadata.FLASH_MODE_OFF );
+        lapseRequest.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO);
+        lapseRequest.set(CaptureRequest.FLASH_MODE, CameraMetadata.FLASH_MODE_OFF );
+        int expComp = Integer.parseInt(sharedPref.getString("exp","0"));
+        int wbMode = Integer.parseInt(sharedPref.getString("wb","1"));
+        captureRequest.set(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION, expComp);
+        captureRequest.set(CaptureRequest.CONTROL_AWB_MODE, wbMode);
+        lapseRequest.set(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION, expComp);
+        lapseRequest.set(CaptureRequest.CONTROL_AWB_MODE, wbMode);
         int deviceOrientation = getWindowManager().getDefaultDisplay().getRotation();
         deviceOrientation = (deviceOrientation + 45) / 90 * 90;
         if(setCameraDirection == CameraCharacteristics.LENS_FACING_FRONT)
             deviceOrientation = -deviceOrientation;
         int rotation = (sensorOrientation + deviceOrientation + 360) % 360;
         captureRequest.set(CaptureRequest.JPEG_ORIENTATION, ORIENTATIONS.get(rotation));
+        lapseRequest.set(CaptureRequest.JPEG_ORIENTATION, ORIENTATIONS.get(rotation));
         captureRequest.addTarget(outputList.get(1));
+        lapseRequest.addTarget(outputList.get(1));
     }
     private final CameraCaptureSession.StateCallback cameraSessionHandler = new CameraCaptureSession.StateCallback() {
         public void onConfigured(@NonNull CameraCaptureSession session){

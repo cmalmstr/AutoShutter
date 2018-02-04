@@ -37,6 +37,22 @@
         android:negativeButtonText="@null"
         android:positiveButtonText="@null"
         android:title="@string/pref_freq_title" />
+    <ListPreference
+        android:defaultValue="@string/pref_wb_def"
+        android:entries="@array/pref_wb_titles"
+        android:entryValues="@array/pref_wb_values"
+        android:key="wb"
+        android:negativeButtonText="@null"
+        android:positiveButtonText="@null"
+        android:title="@string/pref_wb_title" />
+    <ListPreference
+        android:defaultValue="@string/pref_exp_def"
+        android:entries="@array/pref_exp_titles"
+        android:entryValues="@array/pref_exp_values"
+        android:key="exp"
+        android:negativeButtonText="@null"
+        android:positiveButtonText="@null"
+        android:title="@string/pref_exp_title" />
     <Preference android:title="@string/pref_donate" >
         <intent android:action="android.intent.action.VIEW"
             android:data="http://cmalmstrom.com/donate.html" />
