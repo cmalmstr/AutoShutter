@@ -4,7 +4,6 @@
     android:height="144dp"
     android:viewportWidth="144"
     android:viewportHeight="144">
-
     <path
         android:fillColor="#1a1a1a"
         android:strokeColor="#000"

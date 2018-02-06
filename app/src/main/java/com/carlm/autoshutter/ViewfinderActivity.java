@@ -33,6 +33,7 @@ import android.util.SparseIntArray;
 import android.view.Surface;
 import android.view.TextureView;
 import android.view.View;
+import android.view.WindowManager;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.util.Size;
@@ -98,6 +99,7 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         PreferenceManager.setDefaultValues(this, R.xml.pref_general, false);
         sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
         dir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM) + "/autoshutter");
@@ -143,6 +145,11 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
         super.onStop();
         stopCamera();
         stopBackgroundThread();
+    }
+    @Override
+    protected void onDestroy(){
+        super.onDestroy();
+        sharedPref.edit().putBoolean("timelapse", false).apply();
     }
     private void stopCamera(){
         try { cameraSession.stopRepeating();

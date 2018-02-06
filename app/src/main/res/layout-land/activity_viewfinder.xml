@@ -21,7 +21,7 @@
         app:layout_constraintBottom_toTopOf="@+id/shutterText"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:srcCompat="@drawable/phone_shaking" />
+        app:srcCompat="@drawable/ic_shake" />
 
     <ImageView
         android:id="@+id/stillIcon"
@@ -36,7 +36,7 @@
         app:layout_constraintBottom_toTopOf="@+id/shutterText"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:srcCompat="@drawable/phone_still" />
+        app:srcCompat="@drawable/ic_still" />
 
     <ImageButton
         android:id="@+id/settingsButton"
@@ -53,7 +53,7 @@
         android:onClick="onClickSettings"
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:srcCompat="@drawable/ic_settings_black_24dp"
+        app:srcCompat="@drawable/ic_settings"
         android:focusable="true" />
 
     <ImageButton
@@ -71,7 +71,7 @@
         android:onClick="onClickSwap"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:srcCompat="@drawable/ic_swap_horiz_white_24px"
+        app:srcCompat="@drawable/ic_swap"
         android:focusable="true" />
 
     <ImageButton
@@ -93,7 +93,7 @@
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toTopOf="@+id/viewfinderView"
-        app:srcCompat="@drawable/ic_pause_circle_outline_white_24px"
+        app:srcCompat="@drawable/ic_pause_circle"
         android:focusable="true" />
 
     <ImageButton
@@ -116,7 +116,7 @@
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:srcCompat="@drawable/ic_play_circle_outline_black_24dp"
+        app:srcCompat="@drawable/ic_play_circle"
         android:focusable="true" />
 
     <TextureView

@@ -14,7 +14,7 @@ public class PrefFragment extends PreferenceFragment implements SharedPreference
         super.onCreate(savedInstanceState);
         addPreferencesFromResource(R.xml.pref_general);
         setHasOptionsMenu(true);
-        String [] prefKeys = {"resolution","delay","frequency"};
+        String [] prefKeys = {"resolution","shake", "delay","frequency","wb","exp"};
         for (String key : prefKeys){
             ListPreference listPref = (ListPreference) findPreference(key);
             listPref.setSummary(listPref.getEntry());
