@@ -60,7 +60,6 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
     private CameraCaptureSession cameraSession;
     private CaptureRequest.Builder previewRequest;
     private CaptureRequest.Builder captureRequest;
-    private CaptureRequest.Builder lapseRequest;
     private TextureView previewTexture;
     private ImageReader imageReader;
     private List<Surface> outputList;
@@ -82,6 +81,8 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
     private int shutterDelay;
     private int lapseDelay;
     private int lapsePhotos;
+    private int wbMode;
+    private int expComp;
     private boolean timelapse;
     private boolean paused;
     private static final SparseIntArray ORIENTATIONS = new SparseIntArray();
@@ -121,6 +122,8 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
         lapseDelay = Integer.parseInt(sharedPref.getString("frequency",null));
         timelapse = sharedPref.getBoolean("timelapse",false);
         shakeTolerance = Float.parseFloat(sharedPref.getString("shake", "10"))/10;
+        expComp = Integer.parseInt(sharedPref.getString("exp","0"));
+        wbMode = Integer.parseInt(sharedPref.getString("wb","1"));
         paused = false;
         startBackgroundThread();
         checkPermissions();
@@ -148,7 +151,7 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
     @Override
     protected void onDestroy(){
         super.onDestroy();
-        sharedPref.edit().putBoolean("timelapse", false).apply();
+        sharedPref.edit().putBoolean("timelapse", false).putString("resolution", "max").apply();
     }
     private void stopCamera(){
         try { cameraSession.stopRepeating();
@@ -162,14 +165,20 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
             countdown.cancel();
         if (delayTimer != null)
             delayTimer.cancel();
+        feedback2.setText("");
+        feedbackLapse.setText("");
+        if(timelapse) {
+            getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+            captureRequest.set(CaptureRequest.CONTROL_AF_TRIGGER, 0);
+            captureRequest.set(CaptureRequest.CONTROL_AE_LOCK, false);
+            captureRequest.set(CaptureRequest.CONTROL_AWB_LOCK, false);
+        }
     }
     private void initShutter(){
         lapsePhotos = 0;
         stillIcon.setVisibility(View.GONE);
         shakeIcon.setVisibility(View.VISIBLE);
         feedback.setText(R.string.hold_still_txt);
-        feedback2.setText("");
-        feedbackLapse.setText("");
         delayTimer = new CountDownTimer(500,100){
             public void onTick(long millisUntilFinished){}
             public void onFinish(){
@@ -190,36 +199,32 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
             }
             @Override
             public void onFinish() {
-                feedback.setText(R.string.capture_txt);
+                feedback2.setText("0");
                 capture();
             }
         }.start();
     }
     @SuppressLint("SetTextI18n")
     private void capture (){
-        if (lapsePhotos==0) {
-            try {
-                lapseRequest.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO);
-                cameraSession.capture(captureRequest.build(), null, backgroundHandler);
-                lapseRequest.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_OFF);
-            } catch (CameraAccessException | IllegalStateException | NullPointerException e) {
-                System.err.println("Capture session can\'t build request"); }
-        }
-        else {
-            try {
-                cameraSession.capture(lapseRequest.build(), null, backgroundHandler);
-            } catch (CameraAccessException | IllegalStateException | NullPointerException e) {
-                System.err.println("Capture session can\'t build request"); }
-        }
-        if (timelapse) {
-            getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-            feedback.setText(R.string.lapse_capture_txt);
+        try { cameraSession.capture(captureRequest.build(), null, backgroundHandler);
+        } catch (CameraAccessException | IllegalStateException | NullPointerException e) {
+            System.err.println("Capture session can\'t build request"); }
+        if (timelapse){
+            if (lapsePhotos==0) {
+              captureRequest.set(CaptureRequest.CONTROL_AF_TRIGGER, 2);
+              captureRequest.set(CaptureRequest.CONTROL_AE_LOCK, true);
+              captureRequest.set(CaptureRequest.CONTROL_AWB_LOCK, true);
+              getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+              feedback.setText(R.string.lapse_capture_txt);
+            }
             lapsePhotos++;
             feedbackLapse.setText(Integer.toString(lapsePhotos) + getString(R.string.lapse_count_txt) + Integer.toString(lapsePhotos/24) + getString(R.string.lapse_count_txt2));
             autoShutter(lapseDelay);
         }
-        else
+        else {
+            feedback.setText(R.string.capture_txt);
             feedback2.setText(R.string.final_capture_txt);
+        }
     }
     @Override
     public void onSensorChanged(SensorEvent event){
@@ -308,7 +313,9 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
         }
         List<Size> bigEnoughPreview = new ArrayList<>();
         List<Size> bigEnoughCapture = new ArrayList<>();
+        List<Size> allSizes = new ArrayList<>();
         for (Size option : jpgSizes) {
+            allSizes.add(option);
             int thisHeight = option.getHeight();
             int thisWidth = option.getWidth();
             if (thisHeight == thisWidth * previewHeight/previewWidth &&
@@ -320,18 +327,17 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
         }
         Size previewSize;
         Size captureSize;
-        if (bigEnoughCapture.size() > 0) {
-            Size size;
-            if (max)
-                size = Collections.max(bigEnoughCapture, new CompareSizesByArea());
-            else
-                size = Collections.min(bigEnoughCapture, new CompareSizesByArea());
-            captureSize = new Size(size.getWidth(), size.getHeight());
-        } else
-            captureSize = new Size(jpgSizes[0].getWidth(), jpgSizes[0].getHeight());
+        Size activeSize;
+        if (max && allSizes.size() > 0)
+            activeSize = Collections.max(allSizes, new CompareSizesByArea());
+        else if (bigEnoughCapture.size() > 0)
+            activeSize = Collections.min(bigEnoughCapture, new CompareSizesByArea());
+        else
+            activeSize = jpgSizes[0];
+        captureSize = new Size(activeSize.getWidth(), activeSize.getHeight());
         if (bigEnoughPreview.size() > 0) {
-            Size size = Collections.min(bigEnoughPreview, new CompareSizesByArea());
-            previewSize = new Size(size.getWidth(), size.getHeight());
+            activeSize = Collections.min(bigEnoughPreview, new CompareSizesByArea());
+            previewSize = new Size(activeSize.getWidth(), activeSize.getHeight());
         } else
             previewSize = new Size(MAX_PREVIEW_WIDTH, MAX_PREVIEW_HEIGHT);
         prepareOutputSurfaces(previewSize, captureSize);
@@ -385,33 +391,26 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
         try { previewRequest = deviceCamera.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
         } catch (CameraAccessException e) {System.err.println("Unable to create preview request");}
         previewRequest.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO);
+        previewRequest.set(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION, expComp);
+        previewRequest.set(CaptureRequest.CONTROL_AWB_MODE, wbMode);
         previewRequest.addTarget(outputList.get(0));
         try { deviceCamera.createCaptureSession(outputList, cameraSessionHandler, backgroundHandler);
         } catch (CameraAccessException e) {System.err.println("Unable to start preview session");}
     }
     private void prepareCaptureRequest(){
         try { captureRequest = deviceCamera.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
-            lapseRequest = deviceCamera.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
         } catch (CameraAccessException e) {System.err.println("Unable to create capture requests");}
         captureRequest.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO);
         captureRequest.set(CaptureRequest.FLASH_MODE, CameraMetadata.FLASH_MODE_OFF );
-        lapseRequest.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO);
-        lapseRequest.set(CaptureRequest.FLASH_MODE, CameraMetadata.FLASH_MODE_OFF );
-        int expComp = Integer.parseInt(sharedPref.getString("exp","0"));
-        int wbMode = Integer.parseInt(sharedPref.getString("wb","1"));
         captureRequest.set(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION, expComp);
         captureRequest.set(CaptureRequest.CONTROL_AWB_MODE, wbMode);
-        lapseRequest.set(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION, expComp);
-        lapseRequest.set(CaptureRequest.CONTROL_AWB_MODE, wbMode);
         int deviceOrientation = getWindowManager().getDefaultDisplay().getRotation();
         deviceOrientation = (deviceOrientation + 45) / 90 * 90;
         if(setCameraDirection == CameraCharacteristics.LENS_FACING_FRONT)
             deviceOrientation = -deviceOrientation;
         int rotation = (sensorOrientation + deviceOrientation + 360) % 360;
         captureRequest.set(CaptureRequest.JPEG_ORIENTATION, ORIENTATIONS.get(rotation));
-        lapseRequest.set(CaptureRequest.JPEG_ORIENTATION, ORIENTATIONS.get(rotation));
         captureRequest.addTarget(outputList.get(1));
-        lapseRequest.addTarget(outputList.get(1));
     }
     private final CameraCaptureSession.StateCallback cameraSessionHandler = new CameraCaptureSession.StateCallback() {
         public void onConfigured(@NonNull CameraCaptureSession session){
@@ -455,8 +454,6 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
         stillIcon.setVisibility(View.GONE);
         shakeIcon.setVisibility(View.GONE);
         feedback.setText(R.string.pause_txt);
-        feedback2.setText("");
-        feedbackLapse.setText("");
         view.setVisibility(View.GONE);
         findViewById(R.id.playButton).setVisibility(View.VISIBLE);
     }

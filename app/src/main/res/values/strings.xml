@@ -19,7 +19,7 @@
 
     <!-- Strings related to Settings -->
     <string name="pref_res_title">Photo resolution</string>
-    <string name="pref_res_def">fhd</string>
+    <string name="pref_res_def">max</string>
     <string-array name="pref_res_titles">
         <item>1MP/720p</item>
         <item>2MP/1080p</item>
