@@ -61,7 +61,7 @@
         <item>30000</item>
     </string-array>
     <string name="pref_timelapse_title">Timelapse mode</string>
-    <string name="pref_timelapse_description">Keeps screen and enables timelapse photography</string>
+    <string name="pref_timelapse_description">Keeps screen on and enables timelapse photography</string>
     <string name="pref_freq_title">Timelapse frame interval</string>
     <string name="pref_freq_def">1000</string>
     <string-array name="pref_freq_titles">

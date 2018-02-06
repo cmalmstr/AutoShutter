@@ -99,7 +99,6 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         PreferenceManager.setDefaultValues(this, R.xml.pref_general, false);
         sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
         dir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM) + "/autoshutter");
@@ -213,6 +212,7 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
                 System.err.println("Capture session can\'t build request"); }
         }
         if (timelapse) {
+            getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
             feedback.setText(R.string.lapse_capture_txt);
             lapsePhotos++;
             feedbackLapse.setText(Integer.toString(lapsePhotos) + getString(R.string.lapse_count_txt) + Integer.toString(lapsePhotos/24) + getString(R.string.lapse_count_txt2));
