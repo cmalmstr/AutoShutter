@@ -53,8 +53,8 @@
         android:negativeButtonText="@null"
         android:positiveButtonText="@null"
         android:title="@string/pref_exp_title" />
-    <Preference android:title="@string/pref_donate" >
+    <Preference android:title="@string/pref_privacy" >
         <intent android:action="android.intent.action.VIEW"
-            android:data="http://cmalmstrom.com/donate.html" />
+            android:data="http://cmalmstrom.com/privacy_autoshutter.html" />
     </Preference>
 </PreferenceScreen>
