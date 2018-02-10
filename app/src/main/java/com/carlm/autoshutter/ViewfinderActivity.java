@@ -169,9 +169,12 @@ public class ViewfinderActivity extends AppCompatActivity implements SensorEvent
         feedbackLapse.setText("");
         if(timelapse) {
             getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-            captureRequest.set(CaptureRequest.CONTROL_AF_TRIGGER, 0);
-            captureRequest.set(CaptureRequest.CONTROL_AE_LOCK, false);
-            captureRequest.set(CaptureRequest.CONTROL_AWB_LOCK, false);
+            try {
+                captureRequest.set(CaptureRequest.CONTROL_AF_TRIGGER, 0);
+                captureRequest.set(CaptureRequest.CONTROL_AE_LOCK, false);
+                captureRequest.set(CaptureRequest.CONTROL_AWB_LOCK, false);
+            } catch (IllegalStateException | NullPointerException e) {System.err.println("Capture request not available to reset");
+            }
         }
     }
     private void initShutter(){
